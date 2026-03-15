@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact — Longbourn Papers</title>
+    <meta name="description" content="Get in touch with Longbourn Papers. We'd love to hear from you.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdn.snipcart.com/themes/v3.6.1/default/snipcart.css" />
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="site-header">
+        <div class="container">
+            <div class="site-branding"><a href="/">Longbourn Papers</a></div>
+            <button class="menu-toggle" aria-label="Toggle Menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="/shop.html">Gift Tags</a></li>
+                    <li><a href="/shop.html">Grand Tags</a></li>
+                    <li><a href="/shop.html">Petite Cards</a></li>
+                    <li><a href="/shop.html">Stationery</a></li>
+                    <li>
+                        <a href="/shop.html">Collections</a>
+                        <ul class="dropdown">
+                            <li><a href="/shop.html">Sympathy &amp; Support</a></li>
+                            <li><a href="/shop.html">Thank You &amp; Gratitude</a></li>
+                            <li><a href="/shop.html">Celebration</a></li>
+                            <li><a href="/shop.html">Baby</a></li>
+                            <li><a href="/shop.html">Holiday</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#" class="active">Connect</a>
+                        <ul class="dropdown">
+                            <li><a href="/about.html">About</a></li>
+                            <li><a href="/letterpress.html">Art of Letterpress</a></li>
+                            <li><a href="/contact.html" class="active">Contact</a></li>
+                            <li><a href="/blog.html">Blog</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+            <div class="header-utils">
+                <button class="snipcart-checkout">Cart <span class="cart-count snipcart-items-count">0</span></button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Get in Touch -->
+    <section class="section section--sage">
+        <div class="container">
+            <div class="split">
+                <div class="split__image" style="background-color:var(--color-rose);">
+                    <span class="placeholder">Contact Image</span>
+                </div>
+                <div class="split__text">
+                    <h1>Get in Touch</h1>
+                    <p>At Longbourn, we adore the romance of a handwritten letter sealed with wax and posted in a bright red box. But we understand that modern communication methods are a bit more convenient for shopping. Please feel free to reach out through any channel you prefer.</p>
+
+                    <div class="contact-info" style="margin-top:var(--spacing-md);">
+                        <p><strong>Phone:</strong> <a href="tel:8012056642">801-205-6642</a></p>
+                        <p><strong>Email:</strong> <a href="mailto:alexandra@longbournpapers.com">alexandra@longbournpapers.com</a></p>
+                        <p><strong>Mail:</strong> PO Box 22, Farmington UT 84025</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Form (Netlify Forms) -->
+    <section class="section section--cream">
+        <div class="container">
+            <div class="featured-text">
+                <h2>Write to Us</h2>
+            </div>
+
+            <div class="contact-form">
+                <form name="contact" method="POST" data-netlify="true" action="/contact.html?success=true">
+                    <input type="hidden" name="form-name" value="contact">
+
+                    <div class="form-group">
+                        <label for="name">Name *</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email *</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone">Phone</label>
+                        <input type="tel" id="phone" name="phone">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="inquiry-type">Inquiry Type</label>
+                        <select id="inquiry-type" name="inquiry-type">
+                            <option value="">Select an option</option>
+                            <option value="General Inquiry">General Inquiry</option>
+                            <option value="Wholesale">Wholesale</option>
+                            <option value="Custom Orders">Custom Orders</option>
+                            <option value="Order Support">Order Support</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="message">Comment *</label>
+                        <textarea id="message" name="message" required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn--primary" style="width:100%;">Send</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Before You Go -->
+    <section class="section section--rose">
+        <div class="container">
+            <div class="featured-text">
+                <h2>Before You Go&hellip;</h2>
+                <p>Browse our collection of handcrafted gift tags, perfect for elevating every gift.</p>
+                <a href="/shop.html" class="btn btn--outline-dark" style="margin-top:var(--spacing-sm);">Shop Gift Tags</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <h3>Longbourn Papers</h3>
+                    <p>Crafted paper goods for meaningful moments. Hand-pressed heirloom stationery created using traditional letterpress techniques on rich cotton paper.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Shop</h4>
+                    <ul>
+                        <li><a href="/shop.html">All Products</a></li>
+                        <li><a href="/shop.html">Gift Tags</a></li>
+                        <li><a href="/shop.html">Grand Tags</a></li>
+                        <li><a href="/shop.html">Petite Cards</a></li>
+                        <li><a href="/shop.html">Stationery</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Collections</h4>
+                    <ul>
+                        <li><a href="/shop.html">Sympathy &amp; Support</a></li>
+                        <li><a href="/shop.html">Thank You &amp; Gratitude</a></li>
+                        <li><a href="/shop.html">Celebration</a></li>
+                        <li><a href="/shop.html">Baby</a></li>
+                        <li><a href="/shop.html">Holiday</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Connect</h4>
+                    <ul>
+                        <li><a href="/about.html">About</a></li>
+                        <li><a href="/letterpress.html">Art of Letterpress</a></li>
+                        <li><a href="/contact.html">Contact</a></li>
+                        <li><a href="/blog.html">Blog</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Longbourn Papers. All rights reserved.</p>
+                <div class="footer-social">
+                    <a href="#" target="_blank" rel="noopener noreferrer">Instagram</a>
+                    <a href="#" target="_blank" rel="noopener noreferrer">Facebook</a>
+                    <a href="#" target="_blank" rel="noopener noreferrer">Pinterest</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <div hidden id="snipcart" data-api-key="YOUR_SNIPCART_PUBLIC_API_KEY" data-config-modal-style="side"></div>
+    <script async src="https://cdn.snipcart.com/themes/v3.6.1/default/snipcart.js"></script>
+    <script src="/js/main.js"></script>
+</body>
+</html>
