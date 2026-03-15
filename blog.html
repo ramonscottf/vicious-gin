@@ -111,7 +111,11 @@
             <div class="newsletter">
                 <h2>Stay in Touch</h2>
                 <p>Join our mailing list for new designs, seasonal collections, and the occasional love letter.</p>
-                <form class="newsletter-form" name="newsletter" method="POST" data-netlify="true">
+                <form class="newsletter-form web3form" data-form-type="newsletter">
+                    <input type="hidden" name="access_key" value="YOUR_WEB3FORMS_ACCESS_KEY">
+                    <input type="hidden" name="subject" value="New Newsletter Signup — Longbourn Papers">
+                    <input type="hidden" name="from_name" value="Longbourn Papers Website">
+                    <input type="checkbox" name="botcheck" style="display:none;">
                     <input type="email" name="email" placeholder="Your email address" required>
                     <button type="submit">Subscribe</button>
                 </form>

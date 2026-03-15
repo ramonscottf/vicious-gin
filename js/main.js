@@ -64,12 +64,42 @@
         });
     });
 
-    // Netlify Forms success message
-    var urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('success') === 'true') {
-        var form = document.querySelector('.contact-form form');
-        if (form) {
-            form.innerHTML = '<div class="featured-text" style="padding:var(--spacing-lg) 0;"><h2>Thank You!</h2><p>Your message has been sent. We\'ll get back to you soon.</p></div>';
-        }
-    }
+    // Web3Forms submission handler
+    document.querySelectorAll('.web3form').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var submitBtn = form.querySelector('button[type="submit"]');
+            var originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Sending...';
+            submitBtn.disabled = true;
+
+            var formData = new FormData(form);
+            formData.append('botcheck', '');
+
+            fetch('https://api.web3forms.com/submit', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    var formType = form.getAttribute('data-form-type');
+                    if (formType === 'contact') {
+                        form.innerHTML = '<div class="featured-text" style="padding:var(--spacing-lg) 0;"><h2>Thank You!</h2><p>Your message has been sent. We\'ll get back to you soon.</p></div>';
+                    } else {
+                        form.innerHTML = '<p style="padding:var(--spacing-sm) 0;font-weight:500;">Thank you for subscribing!</p>';
+                    }
+                } else {
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                    alert('Something went wrong. Please try again.');
+                }
+            })
+            .catch(function () {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+                alert('Something went wrong. Please try again.');
+            });
+        });
+    });
 })();
