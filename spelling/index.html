@@ -18,13 +18,23 @@
 
   *{box-sizing:border-box;margin:0;padding:0}
 
+  html{height:100%;overflow:hidden}
   body{
     font-family:'Nunito',sans-serif;
-    min-height:100vh;
+    min-height:100vh;min-height:100dvh;
     display:flex;align-items:center;justify-content:center;
     padding:20px;
+    padding-top:max(20px, env(safe-area-inset-top));
+    padding-bottom:max(20px, env(safe-area-inset-bottom));
     background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#d946ef 100%);
     transition:background 0.6s ease;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  body.quiz-mode{
+    align-items:flex-start;
+    justify-content:flex-start;
+    padding-top:max(10px, env(safe-area-inset-top));
   }
 
   button{cursor:pointer;border:none;transition:all 0.2s ease;font-family:'Nunito',sans-serif}
@@ -149,15 +159,40 @@
   }
   .word-item:hover{background:rgba(255,255,255,0.2)}
 
+  /* Persistent input for mobile keyboard retention */
+  #persistentInput{
+    width:100%;padding:14px 20px;
+    border-radius:14px;
+    font-size:22px;font-family:'Nunito',sans-serif;font-weight:800;
+    color:#1e1b4b;text-align:center;letter-spacing:3px;
+    transition:border-color 0.3s ease, background 0.3s ease;
+    background:#fafafa;
+    border:3px solid #8b5cf6;
+    box-sizing:border-box;
+  }
+  #persistentInput::placeholder{color:#c4b5fd;font-weight:600;letter-spacing:1px;font-size:16px}
+  #persistentInput:focus{outline:none;box-shadow:0 0 0 3px rgba(139,92,246,0.2)}
+  #persistentInput.correct{border-color:#22c55e;background:#f0fdf4}
+  #persistentInput.wrong{border-color:#ef4444;background:#fef2f2}
+  #inputSlot{min-height:52px}
+
   /* Responsive */
   @media(max-width:480px){
-    body{padding:12px}
-    .quiz-card{padding:20px;border-radius:20px}
+    body{padding:10px}
+    body.quiz-mode{padding:6px;padding-top:max(6px, env(safe-area-inset-top))}
+    .quiz-card{padding:14px;border-radius:18px}
+  }
+  @media(max-height:700px){
+    body.quiz-mode{padding-top:4px}
+    .quiz-card{padding:12px}
   }
 </style>
 </head>
 <body>
 <div id="app" style="width:100%;max-width:520px"></div>
+<input id="persistentInput" type="text" inputmode="text" placeholder="Type the word…"
+  autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+  style="position:fixed;left:-9999px;opacity:0;pointer-events:none">
 
 <script>
 const API_KEY = 'sk_b75b3ea6eddc2b5a442e6c6d92902dd59143283efc07223e';
@@ -204,8 +239,50 @@ const PRAISE = [
   {text:"Brilliant!", icon:"sparkles"},
 ];
 
-let state = {screen:"home",words:[],idx:0,input:"",feedback:null,score:0,lives:3,letterReveal:0,wrongWords:[],speaking:false};
+let state = {screen:"home",words:[],idx:0,input:"",feedback:null,score:0,lives:3,wrongWords:[],speaking:false,retrying:false};
 let currentAudio = null;
+let persistentInput = null;
+
+function setupPersistentInput() {
+  persistentInput = document.getElementById('persistentInput');
+  persistentInput.addEventListener('input', e => {
+    state.input = e.target.value;
+  });
+  persistentInput.addEventListener('keydown', e => {
+    if(e.key === 'Enter') submit();
+  });
+  // Prevent keyboard dismiss on blur — immediately refocus during quiz
+  persistentInput.addEventListener('blur', () => {
+    if(state.screen === 'quiz' && !state.feedback) {
+      setTimeout(() => {
+        if(state.screen === 'quiz' && !state.feedback) {
+          persistentInput.focus({preventScroll:true});
+        }
+      }, 50);
+    }
+  });
+}
+
+function showPersistentInput(borderColor, isDisabled) {
+  const pi = persistentInput;
+  pi.style.cssText = '';
+  pi.className = '';
+  if(state.feedback === 'correct') pi.className = 'correct';
+  else if(state.feedback === 'wrong' || state.feedback === 'retry') pi.className = 'wrong';
+  else pi.style.borderColor = borderColor;
+  pi.disabled = isDisabled;
+}
+
+function hidePersistentInput() {
+  persistentInput.style.cssText = 'position:fixed;left:-9999px;opacity:0;pointer-events:none';
+  persistentInput.disabled = true;
+}
+
+function focusInput() {
+  if(persistentInput && state.screen === 'quiz' && !state.feedback) {
+    persistentInput.focus({preventScroll:true});
+  }
+}
 
 /* ── SVG Icon System ── */
 const ICONS = {
@@ -270,7 +347,6 @@ async function speak(word, slow=false) {
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
-    if(slow) audio.playbackRate = 0.75;
     currentAudio = audio;
     audio.onended = () => { state.speaking = false; URL.revokeObjectURL(url); render(); };
     audio.onerror = () => { state.speaking = false; render(); };
@@ -305,42 +381,88 @@ function spawnConfetti(correct) {
 
 function startQuiz() {
   const shuffled = shuffle(WORDS);
-  state={screen:"quiz",words:shuffled,idx:0,input:"",feedback:null,score:0,lives:3,letterReveal:0,wrongWords:[],speaking:false};
+  state={screen:"quiz",words:shuffled,idx:0,input:"",feedback:null,score:0,lives:3,wrongWords:[],speaking:false,retrying:false};
+  persistentInput.value = '';
   render();
-  setTimeout(()=>speak(shuffled[0].word), 400);
+  setTimeout(()=>{focusInput();speak(shuffled[0].word);}, 300);
 }
 
 function submit() {
-  const {words,idx,input,feedback,lives}=state;
+  const {words,idx,input,feedback,lives,retrying}=state;
   if(!input.trim()||feedback) return;
   const current=words[idx];
   const correct=input.trim().toLowerCase()===current.word.toLowerCase();
-  state.feedback=correct?'correct':'wrong';
-  spawnConfetti(correct);
-  if(correct){ state.score++; }
+
+  if(correct){
+    state.feedback='correct';
+    state.score++;
+    spawnConfetti(true);
+    persistentInput.disabled = true;
+    render();
+    setTimeout(()=>{
+      state.feedback=null; state.input=''; state.retrying=false;
+      persistentInput.value='';
+      persistentInput.disabled=false;
+      if(state.idx+1>=state.words.length){ state.screen='result'; render(); }
+      else {
+        state.idx++;
+        render();
+        focusInput();
+        setTimeout(()=>speak(state.words[state.idx].word),300);
+      }
+    }, 1100);
+  }
+  else if(!retrying){
+    // First wrong — give a second chance
+    state.feedback='retry';
+    spawnConfetti(false);
+    setTimeout(()=>speak(current.word,true),600);
+    persistentInput.disabled = true;
+    render();
+    setTimeout(()=>{
+      state.feedback=null; state.input=''; state.retrying=true;
+      persistentInput.value='';
+      persistentInput.disabled=false;
+      render();
+      focusInput();
+    }, 2000);
+  }
   else {
+    // Second wrong — count it
+    state.feedback='wrong';
     if(!state.wrongWords.find(w=>w.word===current.word)) state.wrongWords.push(current);
     state.lives--;
+    spawnConfetti(false);
     setTimeout(()=>speak(current.word,true),600);
+    persistentInput.disabled = true;
+    render();
+    const nextLives=lives-1;
+    setTimeout(()=>{
+      state.feedback=null; state.input=''; state.retrying=false;
+      persistentInput.value='';
+      persistentInput.disabled=false;
+      if(state.idx+1>=state.words.length||nextLives<=0){ state.screen='result'; render(); }
+      else {
+        state.idx++;
+        render();
+        focusInput();
+        setTimeout(()=>speak(state.words[state.idx].word),300);
+      }
+    }, 2200);
   }
-  render();
-  const nextLives=correct?lives:lives-1;
-  setTimeout(()=>{
-    state.feedback=null; state.input=''; state.letterReveal=0;
-    if(state.idx+1>=state.words.length||nextLives<=0){ state.screen='result'; render(); }
-    else { state.idx++; render(); setTimeout(()=>speak(state.words[state.idx].word),400); }
-  }, correct?1100:2200);
 }
 
 function render() {
-  const {screen,words,idx,input,feedback,score,lives,letterReveal,wrongWords,speaking}=state;
+  const {screen,words,idx,input,feedback,score,lives,wrongWords,speaking,retrying}=state;
   const current=words[idx];
   const cc=current?COLORS[current.cat]:null;
   const progress=words.length?(idx/words.length)*100:0;
   const pct=score/(words.length||1);
 
   if(screen==='home'){
+    document.body.className='';
     document.body.style.background='linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#d946ef 100%)';
+    hidePersistentInput();
     document.getElementById('app').innerHTML=`
       <div class="fadeUp" style="text-align:center;max-width:480px;width:100%">
         <div class="float" style="margin-bottom:12px;color:#fff;opacity:0.95">${icon('pencil',64)}</div>
@@ -349,7 +471,7 @@ function render() {
         <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0 4px;color:rgba(255,255,255,0.8);font-size:14px;font-weight:700">
           ${icon('volume',14)} Powered by ElevenLabs &mdash; real voice!
         </div>
-        <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:28px">${WORDS.length} words &middot; 3 lives &middot; Slow button replays clearly</p>
+        <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:28px">${WORDS.length} words &middot; 3 lives &middot; Second chance on mistakes</p>
 
         <div class="glass" style="border-radius:20px;padding:18px 20px;margin-bottom:28px;text-align:left">
           ${Object.entries(COLORS).map(([cat,c])=>`
@@ -366,79 +488,79 @@ function render() {
   }
 
   else if(screen==='quiz'&&current){
+    document.body.className='quiz-mode';
     document.body.style.background=`linear-gradient(160deg,${cc.light} 0%,#fff 100%)`;
-    const hintWord=current.word.slice(0,letterReveal)+'_ '.repeat(current.word.length-letterReveal).trim();
     const speakerBtn = speaking
       ? `<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:14px;height:14px;border:2.5px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite"></span>Playing&hellip;</span>`
       : `<span style="display:inline-flex;align-items:center;gap:6px">${icon('volume',16,'#fff')} Hear Word</span>`;
 
     document.getElementById('app').innerHTML=`
       <div style="width:100%;max-width:500px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div style="display:flex;gap:4px">
-            ${[0,1,2].map(i=>`<span class="heart ${i<lives?'':'heart--empty'}" style="color:#ef4444;font-size:24px">${icon('heart',24,i<lives?'#ef4444':'#d1d5db')}</span>`).join('')}
+            ${[0,1,2].map(i=>`<span class="heart ${i<lives?'':'heart--empty'}" style="color:#ef4444;font-size:22px">${icon('heart',22,i<lives?'#ef4444':'#d1d5db')}</span>`).join('')}
           </div>
-          <div class="score-pill">
-            ${icon('star',16,'#f59e0b')}
+          <div class="score-pill" style="padding:4px 12px;font-size:14px">
+            ${icon('star',14,'#f59e0b')}
             <span>${score} / ${words.length}</span>
           </div>
         </div>
 
-        <div class="progress-track" style="margin-bottom:20px">
+        <div class="progress-track" style="margin-bottom:10px;height:6px">
           <div class="progress-fill" style="width:${progress}%;background:linear-gradient(90deg,${cc.bg},${cc.ring})"></div>
         </div>
 
-        <div id="card" class="quiz-card ${feedback==='wrong'?'shake':feedback==='correct'?'bounce':'fadeUp'}" style="border-top:4px solid ${cc.bg}">
-          <div style="text-align:center;margin-bottom:12px">
+        <div id="card" class="quiz-card ${feedback==='wrong'?'shake':feedback==='correct'?'bounce':''}" style="border-top:4px solid ${cc.bg}">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             ${catBadge(current.cat, 'large')}
-          </div>
-          <p style="text-align:center;color:#9ca3af;font-size:13px;font-weight:700;margin-bottom:16px">Word ${idx+1} of ${words.length}</p>
-
-          <div style="display:flex;gap:10px;margin-bottom:16px;justify-content:center">
-            <button onclick="speak('${current.word}')" ${speaking?'disabled':''} class="btn-primary" style="--accent:${cc.bg};padding:12px 24px;font-size:15px;font-family:'Fredoka One',cursive;opacity:${speaking?0.85:1}">${speakerBtn}</button>
-            <button onclick="speak('${current.word}',true)" ${speaking?'disabled':''} class="btn-secondary" style="background:${cc.light};color:${cc.bg};padding:12px 18px;font-size:14px;display:inline-flex;align-items:center;gap:6px;opacity:${speaking?0.6:1}">${icon('turtle',16,cc.bg)} Slow</button>
+            <span style="color:#9ca3af;font-size:12px;font-weight:700">Word ${idx+1} of ${words.length}</span>
           </div>
 
-          <div style="background:${cc.light};border-radius:14px;padding:12px 16px;margin-bottom:18px;text-align:center;font-size:15px;color:#4b5563;font-weight:700;line-height:1.5;display:flex;align-items:center;justify-content:center;gap:8px">
-            ${icon('lightbulb',18,cc.bg)}
-            <span>${current.hint}</span>
+          <div style="display:flex;gap:8px;margin-bottom:10px;justify-content:center">
+            <button onclick="speak('${current.word}')" ${speaking?'disabled':''} class="btn-primary" style="--accent:${cc.bg};padding:10px 20px;font-size:14px;font-family:'Fredoka One',cursive;opacity:${speaking?0.85:1}">${speakerBtn}</button>
+            <button onclick="speak('${current.word}',true)" ${speaking?'disabled':''} class="btn-secondary" style="background:${cc.light};color:${cc.bg};padding:10px 14px;font-size:13px;display:inline-flex;align-items:center;gap:4px;opacity:${speaking?0.6:1}">${icon('turtle',15,cc.bg)} Slow</button>
           </div>
 
-          ${letterReveal>0?`<div class="pop" style="text-align:center;font-size:26px;letter-spacing:6px;font-family:'Fredoka One',cursive;color:${cc.bg};margin-bottom:14px">${hintWord}</div>`:''}
+          ${retrying?`<div style="text-align:center;margin-bottom:8px;font-size:14px;font-family:'Fredoka One',cursive;color:#f59e0b;display:flex;align-items:center;justify-content:center;gap:6px">
+            ${icon('refresh',14,'#f59e0b')} Try again! Listen carefully&hellip;
+          </div>`:''}
 
-          <input id="spellInput" class="spell-input" value="${input.replace(/"/g,'&quot;')}" placeholder="Type the word…"
-            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-            ${feedback?'disabled':''}
-            style="border:3px solid ${feedback==='correct'?'#22c55e':feedback==='wrong'?'#ef4444':cc.bg};background:${feedback==='correct'?'#f0fdf4':feedback==='wrong'?'#fef2f2':'#fafafa'}">
+          <div id="inputSlot"></div>
 
-          ${feedback?`<div class="pop" style="text-align:center;margin-top:14px;font-size:20px;font-family:'Fredoka One',cursive;color:${feedback==='correct'?'#16a34a':'#dc2626'};display:flex;align-items:center;justify-content:center;gap:8px">
-            ${feedback==='correct'
-              ? `${icon('check',22,'#16a34a')} ${PRAISE[Math.floor(Math.random()*PRAISE.length)].text}`
-              : `<span>It's spelled &ldquo;${current.word}&rdquo;</span>`
-            }</div>`:''}
+          ${feedback==='correct'?`<div class="pop" style="text-align:center;margin-top:10px;font-size:18px;font-family:'Fredoka One',cursive;color:#16a34a;display:flex;align-items:center;justify-content:center;gap:8px">
+            ${icon('check',20,'#16a34a')} ${PRAISE[Math.floor(Math.random()*PRAISE.length)].text}
+          </div>`:''}
+          ${feedback==='retry'?`<div class="pop" style="text-align:center;margin-top:10px;font-size:18px;font-family:'Fredoka One',cursive;color:#f59e0b;display:flex;align-items:center;justify-content:center;gap:8px">
+            ${icon('refresh',18,'#f59e0b')} Not quite — one more try!
+          </div>`:''}
+          ${feedback==='wrong'?`<div class="pop" style="text-align:center;margin-top:10px;font-size:18px;font-family:'Fredoka One',cursive;color:#dc2626;display:flex;align-items:center;justify-content:center;gap:8px">
+            <span>It's spelled &ldquo;${current.word}&rdquo;</span>
+          </div>`:''}
 
           ${!feedback?`
-          <div style="display:flex;gap:10px;margin-top:18px">
-            <button onclick="state.letterReveal=Math.min(state.letterReveal+1,${current.word.length});render()" class="btn-secondary" style="flex:1;background:${cc.light};color:${cc.bg};border-radius:14px;padding:12px 8px;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:6px">
-              ${icon('search',15,cc.bg)} Hint <span style="opacity:0.6">${letterReveal}/${current.word.length}</span>
-            </button>
-            <button onclick="submit()" class="btn-primary" style="flex:2;--accent:${cc.bg};border-radius:14px;padding:12px 20px;font-size:18px;font-family:'Fredoka One',cursive;display:inline-flex;align-items:center;justify-content:center;gap:8px">
-              ${icon('check',18,'#fff')} Check
+          <div style="margin-top:12px">
+            <button onclick="submit()" class="btn-primary" style="width:100%;--accent:${cc.bg};border-radius:14px;padding:12px 18px;font-size:16px;font-family:'Fredoka One',cursive;display:inline-flex;align-items:center;justify-content:center;gap:6px">
+              ${icon('check',16,'#fff')} Check
             </button>
           </div>`:''}
         </div>
       </div>`;
 
-    const inp=document.getElementById('spellInput');
-    if(inp&&!feedback){
-      inp.focus();
-      inp.oninput=e=>{state.input=e.target.value;};
-      inp.onkeydown=e=>{if(e.key==='Enter')submit();};
+    // Move persistent input into the slot
+    const slot = document.getElementById('inputSlot');
+    if(slot) {
+      slot.appendChild(persistentInput);
+      showPersistentInput(cc.bg, !!feedback);
+      if(!feedback) focusInput();
     }
   }
 
   else if(screen==='result'){
+    document.body.className='';
     document.body.style.background='linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#d946ef 100%)';
+    hidePersistentInput();
+    // Move persistent input back to body so it doesn't get destroyed
+    document.body.appendChild(persistentInput);
     const resultIcon = pct===1 ? icon('trophy',64,'#fbbf24') : pct>=0.8 ? icon('star',64,'#fbbf24') : pct>=0.6 ? icon('sparkles',64,'#fbbf24') : icon('heart',64,'#f472b6');
 
     document.getElementById('app').innerHTML=`
@@ -472,11 +594,25 @@ function render() {
   }
 }
 
+setupPersistentInput();
 render();
 
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// Handle visual viewport resize (keyboard show/hide) — keep quiz pinned to top
+if(window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => {
+    if(state.screen === 'quiz') {
+      document.body.style.height = window.visualViewport.height + 'px';
+      window.scrollTo(0, 0);
+    }
+  });
+  window.visualViewport.addEventListener('scroll', () => {
+    if(state.screen === 'quiz') window.scrollTo(0, 0);
+  });
 }
 </script>
 </body>
