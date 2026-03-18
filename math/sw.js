@@ -1,10 +1,10 @@
-const CACHE = 'spelling-v3';
+const CACHE = 'math-v1';
 const ASSETS = [
-  '/spelling/',
-  '/spelling/index.html',
-  '/spelling/manifest.json',
-  '/spelling/icon-192.svg',
-  '/spelling/icon-512.svg',
+  '/math/',
+  '/math/index.html',
+  '/math/manifest.json',
+  '/math/icon-192.svg',
+  '/math/icon-512.svg',
   'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap'
 ];
 
@@ -21,8 +21,6 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Let ElevenLabs API calls go through network only
-  if (e.request.url.includes('elevenlabs.io')) return;
   e.respondWith(
     caches.match(e.request).then(r => r || fetch(e.request))
   );

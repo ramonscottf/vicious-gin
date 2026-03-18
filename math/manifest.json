@@ -1,0 +1,24 @@
+{
+  "name": "Math Quiz — 4th Grade",
+  "short_name": "Math Quiz",
+  "description": "4th grade math practice: multiplication, division, fractions, rounding",
+  "start_url": "/math/",
+  "display": "standalone",
+  "background_color": "#059669",
+  "theme_color": "#10b981",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

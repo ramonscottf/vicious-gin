@@ -39,6 +39,7 @@
   .app-info{text-align:left}
   .app-name{font-weight:800;font-size:17px;margin-bottom:2px}
   .app-desc{font-size:13px;color:#64748b;font-weight:600}
+  .app-progress{font-size:11px;color:#94a3b8;font-weight:700;margin-top:4px}
   .footer{margin-top:48px;color:#334155;font-size:12px;font-weight:600}
 </style>
 </head>
@@ -47,13 +48,24 @@
   <h1>Foster Labs</h1>
   <p class="sub">Family apps, built with love.</p>
   <div class="apps">
-    <a href="/spelling/" class="app">
+    <a href="/spelling/" class="app" id="app-spelling">
       <div class="app-icon" style="background:linear-gradient(135deg,#6366f1,#d946ef)">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
       </div>
       <div class="app-info">
         <div class="app-name">Spelling Quiz</div>
         <div class="app-desc">Charles's List 14 — The /s/ Sound</div>
+        <div class="app-progress" id="prog-spelling"></div>
+      </div>
+    </a>
+    <a href="/math/" class="app" id="app-math">
+      <div class="app-icon" style="background:linear-gradient(135deg,#059669,#34d399)">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="16" y1="14" x2="16" y2="14.01"/><line x1="8" y1="18" x2="8" y2="18.01"/><line x1="12" y1="18" x2="12" y2="18.01"/><line x1="16" y1="18" x2="16" y2="18.01"/></svg>
+      </div>
+      <div class="app-info">
+        <div class="app-name">Math Quiz</div>
+        <div class="app-desc">4th grade — multiply, divide, fractions</div>
+        <div class="app-progress" id="prog-math"></div>
       </div>
     </a>
     <a href="/gin/" class="app">
@@ -68,5 +80,18 @@
   </div>
   <p class="footer">fosterlabs.org</p>
 </div>
+<script>
+try{
+  const d=JSON.parse(localStorage.getItem('fosterlabs_progress'))||{sessions:[]};
+  ['spelling','math'].forEach(app=>{
+    const last=d.sessions.filter(s=>s.app===app).pop();
+    if(last){
+      const pct=Math.round(last.score/last.total*100);
+      const el=document.getElementById('prog-'+app);
+      if(el)el.textContent='Last: '+last.score+'/'+last.total+' ('+pct+'%)';
+    }
+  });
+}catch(e){}
+</script>
 </body>
 </html>
