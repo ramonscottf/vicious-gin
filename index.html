@@ -2,96 +2,1006 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Foster Labs</title>
-<meta name="description" content="Family apps by the Fosters">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+<meta name="description" content="Foster Labs — Math &amp; Spelling practice for Charles">
+<meta name="theme-color" content="#6366f1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="math/icon-192.svg">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap');
+
   *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    font-family:'Inter',sans-serif;
-    min-height:100vh;
-    display:flex;align-items:center;justify-content:center;
-    padding:24px;
-    background:#0a0a1a;
-    color:#e2e8f0;
+  html{height:100%;overflow:hidden}
+
+  /* ── Screens ── */
+  .screen{position:fixed;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px;padding-top:max(20px,env(safe-area-inset-top));padding-bottom:max(80px,calc(70px + env(safe-area-inset-bottom)))}
+  .screen.active{display:flex}
+  .screen.quiz-mode{align-items:flex-start;justify-content:flex-start;padding-top:max(10px,env(safe-area-inset-top))}
+
+  /* ── Tab Bar ── */
+  #tab-bar{
+    position:fixed;bottom:0;left:0;right:0;z-index:1000;
+    display:flex;justify-content:space-around;align-items:center;
+    padding:8px 0;padding-bottom:max(8px,env(safe-area-inset-bottom));
+    backdrop-filter:blur(40px) saturate(180%);-webkit-backdrop-filter:blur(40px) saturate(180%);
+    background:rgba(255,255,255,0.12);
+    border-top:1px solid rgba(255,255,255,0.15);
+    transition:transform 0.35s cubic-bezier(0.22,1,0.36,1);
   }
-  .container{max-width:480px;width:100%;text-align:center}
-  h1{font-size:32px;font-weight:900;letter-spacing:-0.5px;margin-bottom:4px;
-    background:linear-gradient(135deg,#fff,#94a3b8);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .sub{color:#64748b;font-size:14px;font-weight:600;margin-bottom:36px}
-  .apps{display:grid;gap:16px}
-  .app{
-    display:flex;align-items:center;gap:16px;
-    padding:20px;border-radius:20px;
-    background:rgba(255,255,255,0.04);
-    border:1px solid rgba(255,255,255,0.08);
-    text-decoration:none;color:inherit;
-    transition:all 0.2s ease;
+  #tab-bar.hidden{transform:translateY(100%)}
+  .tab{
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:6px 20px;border-radius:16px;
+    background:transparent;color:rgba(255,255,255,0.55);
+    font-family:'Nunito',sans-serif;font-size:11px;font-weight:800;
+    cursor:pointer;border:none;transition:all 0.2s;
   }
-  .app:hover{background:rgba(255,255,255,0.08);transform:translateY(-2px);border-color:rgba(255,255,255,0.15)}
-  .app-icon{
-    width:56px;height:56px;border-radius:16px;
-    display:flex;align-items:center;justify-content:center;
-    font-size:24px;flex-shrink:0;
+  .tab:hover{color:rgba(255,255,255,0.8)}
+  .tab.active{background:rgba(255,255,255,0.22);color:#fff}
+  .tab svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ── Shared styles ── */
+  body{font-family:'Nunito',sans-serif;background:#000}
+  button{cursor:pointer;border:none;transition:all 0.2s ease;font-family:'Nunito',sans-serif}
+  button:hover{transform:translateY(-2px);filter:brightness(1.05)}
+  button:active{transform:translateY(0);filter:brightness(0.97)}
+  input:focus{outline:none}
+
+  .icon{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+  .icon svg{width:1em;height:1em;fill:currentColor}
+
+  /* ── Animations ── */
+  @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-12px)}40%{transform:translateX(12px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+  @keyframes bounce{0%,100%{transform:scale(1)}35%{transform:scale(1.06)}65%{transform:scale(0.97)}}
+  @keyframes pop{from{transform:scale(0.4);opacity:0}60%{transform:scale(1.08)}to{transform:scale(1);opacity:1}}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  @keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+  @keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+  @keyframes floatCircle1{0%,100%{transform:translate(0,0) scale(1)}25%{transform:translate(30px,-20px) scale(1.05)}50%{transform:translate(-10px,-40px) scale(0.95)}75%{transform:translate(-30px,-10px) scale(1.02)}}
+  @keyframes floatCircle2{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-40px,20px) scale(1.08)}66%{transform:translate(20px,-30px) scale(0.96)}}
+  @keyframes floatCircle3{0%,100%{transform:translate(0,0) scale(1)}20%{transform:translate(25px,30px) scale(1.03)}60%{transform:translate(-35px,-15px) scale(0.97)}80%{transform:translate(15px,-25px) scale(1.06)}}
+
+  .fadeUp{animation:fadeUp 0.45s cubic-bezier(0.22,1,0.36,1)}
+  .shake{animation:shake 0.45s ease}
+  .bounce{animation:bounce 0.45s ease}
+  .pop{animation:pop 0.3s cubic-bezier(0.22,1,0.36,1)}
+  .float{animation:float 3s ease-in-out infinite}
+  .confetti{position:fixed;pointer-events:none;z-index:9999;animation:fly 0.9s ease-out forwards}
+
+  .glass{background:rgba(255,255,255,0.12);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.18)}
+
+  /* ── Home screen ── */
+  #screen-home{
+    background:linear-gradient(135deg,#667eea,#764ba2,#f093fb,#4facfe);
+    background-size:400% 400%;
+    animation:gradientShift 12s ease infinite;
+    overflow:hidden;
   }
-  .app-info{text-align:left}
-  .app-name{font-weight:800;font-size:17px;margin-bottom:2px}
-  .app-desc{font-size:13px;color:#64748b;font-weight:600}
-  .app-progress{font-size:11px;color:#94a3b8;font-weight:700;margin-top:4px}
-  .footer{margin-top:48px;color:#334155;font-size:12px;font-weight:600}
+  .floating-circle{position:absolute;border-radius:50%;background:rgba(255,255,255,0.08);pointer-events:none}
+  .home-content{position:relative;z-index:1;max-width:480px;width:100%;text-align:center}
+  .stat-card{
+    background:rgba(255,255,255,0.12);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,0.18);border-radius:16px;padding:14px 16px;text-align:left;
+  }
+  .app-card{
+    background:rgba(255,255,255,0.14);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:20px;text-align:center;
+    cursor:pointer;transition:all 0.25s;
+  }
+  .app-card:hover{background:rgba(255,255,255,0.22);transform:translateY(-3px)}
+
+  /* ── Math styles ── */
+  .cat-badge{display:inline-flex;align-items:center;gap:6px;border-radius:10px;padding:4px 14px;font-size:13px;font-weight:800;color:#fff;letter-spacing:0.3px;box-shadow:0 2px 8px rgba(0,0,0,0.12)}
+  .cat-badge .badge-icon{width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:11px}
+  .heart{display:inline-block;transition:all 0.35s ease}
+  .heart--empty{opacity:0.2;filter:grayscale(1)}
+  .progress-track{background:rgba(0,0,0,0.08);border-radius:20px;height:8px;overflow:hidden}
+  .progress-fill{height:100%;border-radius:20px;transition:width 0.5s cubic-bezier(0.22,1,0.36,1)}
+
+  .math-input{
+    width:100%;max-width:200px;padding:12px 16px;border-radius:14px;
+    font-size:28px;font-family:'Nunito',sans-serif;font-weight:800;
+    color:#1e1b4b;text-align:center;letter-spacing:2px;
+    background:#fafafa;border:3px solid #10b981;transition:all 0.3s ease;
+  }
+  .math-input::placeholder{color:#a7f3d0;font-weight:600;letter-spacing:1px;font-size:16px}
+  .math-input:focus{box-shadow:0 0 0 3px rgba(16,185,129,0.2)}
+  .math-input.correct{border-color:#22c55e;background:#f0fdf4}
+  .math-input.wrong{border-color:#ef4444;background:#fef2f2}
+
+  .frac-input{
+    width:60px;padding:6px;border-radius:8px;
+    font-size:22px;font-family:'Nunito',sans-serif;font-weight:800;
+    color:#1e1b4b;text-align:center;background:#fafafa;border:2px solid #10b981;
+  }
+  .frac-input:focus{box-shadow:0 0 0 2px rgba(16,185,129,0.2);outline:none}
+
+  .btn-primary{
+    background:linear-gradient(135deg,var(--accent),var(--accent-dark,var(--accent)));
+    color:#fff;border-radius:50px;font-family:'Fredoka One',cursive;
+    box-shadow:0 6px 20px rgba(0,0,0,0.15);position:relative;overflow:hidden;
+  }
+  .btn-primary::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);background-size:200% 100%;animation:shimmer 3s ease-in-out infinite}
+  .btn-secondary{background:var(--accent-light,#ecfdf5);color:var(--accent,#10b981);border:2px solid rgba(0,0,0,0.06);border-radius:50px;font-weight:800}
+  .btn-ghost{background:rgba(255,255,255,0.15);color:#fff;border:2px solid rgba(255,255,255,0.3);border-radius:50px;font-family:'Fredoka One',cursive}
+  .btn-ghost:hover{background:rgba(255,255,255,0.25)}
+
+  .quiz-card{background:#fff;border-radius:24px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.08),0 0 0 1px rgba(0,0,0,0.04);position:relative}
+  .score-pill{background:rgba(255,255,255,0.92);border-radius:20px;padding:6px 16px;font-weight:900;font-size:16px;color:#374151;box-shadow:0 2px 8px rgba(0,0,0,0.06);display:flex;align-items:center;gap:6px}
+  .word-item{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.12);border-radius:12px;padding:8px 14px;margin-bottom:6px}
+
+  .math-vertical{font-family:'Courier New',monospace;font-size:28px;font-weight:700;text-align:right;line-height:1.4;color:#1e1b4b}
+  .math-vertical .operator{position:absolute;left:0;bottom:0}
+  .math-divider{border-top:3px solid #374151;margin:4px 0}
+  .frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 6px}
+  .frac-num,.frac-den{font-family:'Fredoka One',cursive;font-size:24px;color:#1e1b4b;line-height:1.2}
+  .frac-bar{width:100%;min-width:30px;height:3px;background:#374151;margin:2px 0}
+  .math-op{font-family:'Fredoka One',cursive;font-size:28px;color:#1e1b4b;margin:0 8px;vertical-align:middle}
+  .math-eq{font-family:'Fredoka One',cursive;font-size:28px;color:#9ca3af;margin:0 8px;vertical-align:middle}
+
+  .cat-btn{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    padding:16px 12px;border-radius:16px;
+    background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.2);
+    color:#fff;font-weight:800;font-size:13px;transition:all 0.2s;
+  }
+  .cat-btn:hover{background:rgba(255,255,255,0.25);transform:translateY(-2px)}
+  .cat-btn .cat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900}
+
+  /* ── Spelling persistent input ── */
+  #persistentInput{
+    width:100%;padding:14px 20px;border-radius:14px;
+    font-size:22px;font-family:'Nunito',sans-serif;font-weight:800;
+    color:#1e1b4b;text-align:center;letter-spacing:3px;
+    transition:border-color 0.3s ease,background 0.3s ease;
+    background:#fafafa;border:3px solid #8b5cf6;box-sizing:border-box;
+  }
+  #persistentInput::placeholder{color:#c4b5fd;font-weight:600;letter-spacing:1px;font-size:16px}
+  #persistentInput:focus{outline:none;box-shadow:0 0 0 3px rgba(139,92,246,0.2)}
+  #persistentInput.correct{border-color:#22c55e;background:#f0fdf4}
+  #persistentInput.wrong{border-color:#ef4444;background:#fef2f2}
+  #inputSlot{min-height:52px}
+
+  /* ── Responsive ── */
+  @media(max-width:480px){
+    .screen{padding:10px;padding-bottom:max(80px,calc(70px + env(safe-area-inset-bottom)))}
+    .screen.quiz-mode{padding:6px;padding-top:max(6px,env(safe-area-inset-top));padding-bottom:max(80px,calc(70px + env(safe-area-inset-bottom)))}
+    .quiz-card{padding:14px;border-radius:18px}
+    .math-vertical{font-size:24px}
+    .frac-num,.frac-den{font-size:20px}
+    .math-input{font-size:24px;padding:10px 12px}
+  }
+  @media(max-height:700px){
+    .screen.quiz-mode{padding-top:4px}
+    .quiz-card{padding:12px}
+  }
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>Foster Labs</h1>
-  <p class="sub">Family apps, built with love.</p>
-  <div class="apps">
-    <a href="/spelling/" class="app" id="app-spelling">
-      <div class="app-icon" style="background:linear-gradient(135deg,#6366f1,#d946ef)">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-      </div>
-      <div class="app-info">
-        <div class="app-name">Spelling Quiz</div>
-        <div class="app-desc">Charles's List 14 — The /s/ Sound</div>
-        <div class="app-progress" id="prog-spelling"></div>
-      </div>
-    </a>
-    <a href="/math/" class="app" id="app-math">
-      <div class="app-icon" style="background:linear-gradient(135deg,#059669,#34d399)">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="16" y1="14" x2="16" y2="14.01"/><line x1="8" y1="18" x2="8" y2="18.01"/><line x1="12" y1="18" x2="12" y2="18.01"/><line x1="16" y1="18" x2="16" y2="18.01"/></svg>
-      </div>
-      <div class="app-info">
-        <div class="app-name">Math Quiz</div>
-        <div class="app-desc">4th grade — multiply, divide, fractions</div>
-        <div class="app-progress" id="prog-math"></div>
-      </div>
-    </a>
-    <a href="/gin/" class="app">
-      <div class="app-icon" style="background:linear-gradient(135deg,#4f46e5,#9333ea)">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
-      </div>
-      <div class="app-info">
-        <div class="app-name">Vicious Gin</div>
-        <div class="app-desc">Card game scorer with Gemini scan</div>
-      </div>
-    </a>
-  </div>
-  <p class="footer">fosterlabs.org</p>
+
+<!-- ── Home Screen ── -->
+<div id="screen-home" class="screen active">
+  <div class="floating-circle" style="width:180px;height:180px;top:8%;left:-40px;animation:floatCircle1 8s ease-in-out infinite"></div>
+  <div class="floating-circle" style="width:120px;height:120px;top:20%;right:-20px;animation:floatCircle2 10s ease-in-out infinite 1s"></div>
+  <div class="floating-circle" style="width:200px;height:200px;bottom:18%;left:10%;animation:floatCircle3 12s ease-in-out infinite 2s"></div>
+  <div class="floating-circle" style="width:90px;height:90px;top:55%;right:5%;animation:floatCircle1 9s ease-in-out infinite 3s"></div>
+  <div class="floating-circle" style="width:140px;height:140px;bottom:5%;right:-30px;animation:floatCircle2 11s ease-in-out infinite 0.5s"></div>
+  <div class="floating-circle" style="width:70px;height:70px;top:3%;right:30%;animation:floatCircle3 7s ease-in-out infinite 4s"></div>
+  <div id="home-content" class="home-content"></div>
 </div>
+
+<!-- ── Math Screen ── -->
+<div id="screen-math" class="screen">
+  <div id="math-app" style="width:100%;max-width:520px"></div>
+</div>
+
+<!-- ── Spelling Screen ── -->
+<div id="screen-spelling" class="screen">
+  <div id="spell-app" style="width:100%;max-width:520px"></div>
+  <input id="persistentInput" type="text" inputmode="text" placeholder="Type the word..."
+    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+    style="position:fixed;left:-9999px;opacity:0;pointer-events:none">
+</div>
+
+<!-- ── Tab Bar ── -->
+<nav id="tab-bar">
+  <button class="tab active" data-tab="home" onclick="switchTab('home')">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Home
+  </button>
+  <button class="tab" data-tab="math" onclick="switchTab('math')">
+    <svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="16" y1="14" x2="16" y2="14.01"/><line x1="8" y1="18" x2="8" y2="18.01"/><line x1="12" y1="18" x2="12" y2="18.01"/><line x1="16" y1="18" x2="16" y2="18.01"/></svg>
+    Math
+  </button>
+  <button class="tab" data-tab="spelling" onclick="switchTab('spelling')">
+    <svg viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+    Spelling
+  </button>
+</nav>
+
 <script>
-try{
-  const d=JSON.parse(localStorage.getItem('fosterlabs_progress'))||{sessions:[]};
-  ['spelling','math'].forEach(app=>{
-    const last=d.sessions.filter(s=>s.app===app).pop();
-    if(last){
-      const pct=Math.round(last.score/last.total*100);
-      const el=document.getElementById('prog-'+app);
-      if(el)el.textContent='Last: '+last.score+'/'+last.total+' ('+pct+'%)';
+/* ══════════════════════════════════════════════
+   SHARED UTILITIES
+   ══════════════════════════════════════════════ */
+const S = (() => {
+  const ICONS = {
+    volume:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.08"/></svg>`,
+    turtle:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10c-2 0-3 1-3 1v3s1 1 3 1 3-1 3-1v-3s-1-1-3-1z"/><path d="M5 14s1 4 7 4 7-4 7-4"/><path d="M5 14s-1-2 0-4c1-1.5 3-3 7-3s6 1.5 7 3c1 2 0 4 0 4"/><circle cx="10" cy="11.5" r="0.5" fill="currentColor"/><circle cx="14" cy="11.5" r="0.5" fill="currentColor"/><path d="M7 17l-2 3"/><path d="M17 17l2 3"/><path d="M5 13l-3 1"/><path d="M19 13l3 1"/></svg>`,
+    search:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+    check:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+    heart:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
+    star:`<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+    rocket:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>`,
+    home:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+    refresh:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`,
+    trophy:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12v6a6 6 0 1 1-12 0V2z" opacity="0.15"/><path d="M6 2h12v6a6 6 0 1 1-12 0V2z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 6H2a2 2 0 0 0 0 4h1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18 6h4a2 2 0 0 1 0 4h-1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 16h6v4H9z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 20h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 8v8" fill="none" stroke="currentColor" stroke-width="2"/></svg>`,
+    sparkles:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z"/></svg>`,
+    lightbulb:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>`,
+    pencil:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`,
+    book:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+    calculator:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="16" y1="14" x2="16" y2="14.01"/><line x1="8" y1="18" x2="8" y2="18.01"/><line x1="12" y1="18" x2="12" y2="18.01"/><line x1="16" y1="18" x2="16" y2="18.01"/></svg>`,
+  };
+
+  const PRAISE = ["Nailed it!","Amazing!","Perfect!","Got it!","Brilliant!"];
+
+  function loadProgress(){try{return JSON.parse(localStorage.getItem('fosterlabs_progress'))||{version:1,sessions:[]}}catch(e){return{version:1,sessions:[]}}}
+  function saveSessionData(session){const d=loadProgress();d.sessions.push(session);if(d.sessions.length>100)d.sessions=d.sessions.slice(-100);localStorage.setItem('fosterlabs_progress',JSON.stringify(d))}
+  function getLastSession(app){return loadProgress().sessions.filter(s=>s.app===app).pop()||null}
+  function getWeekSessions(app){const w=Date.now()-7*86400000;return loadProgress().sessions.filter(s=>s.app===app&&new Date(s.date).getTime()>w)}
+
+  function icon(name,size,color){
+    size=size||16;color=color||'currentColor';
+    return '<span class="icon" style="font-size:'+size+'px;color:'+color+';width:'+size+'px;height:'+size+'px">'+(ICONS[name]||'')+'</span>';
+  }
+
+  function spawnConfetti(correct){
+    const colors=correct?["#fbbf24","#f472b6","#22d3ee","#a78bfa","#34d399","#fb923c"]:["#ef4444","#f97316"];
+    for(let i=0;i<(correct?28:6);i++){
+      const d=document.createElement('div');d.className='confetti';
+      const size=5+Math.random()*8,dx=(Math.random()-0.5)*160,dy=-(80+Math.random()*120);
+      d.style.cssText='left:'+(25+Math.random()*50)+'%;top:'+(15+Math.random()*40)+'%;width:'+size+'px;height:'+size+'px;border-radius:'+(Math.random()>0.5?'50%':Math.round(2+Math.random()*3)+'px')+';background:'+colors[Math.floor(Math.random()*colors.length)]+';--dx:'+dx+'px;--dy:'+dy+'px;--rot:'+((Math.random()-0.5)*400)+'deg;opacity:0.9';
+      document.body.appendChild(d);setTimeout(()=>d.remove(),950);
+    }
+  }
+
+  return {loadProgress,saveSessionData,getLastSession,getWeekSessions,icon,ICONS,spawnConfetti,PRAISE};
+})();
+
+
+/* ══════════════════════════════════════════════
+   MATH APP
+   ══════════════════════════════════════════════ */
+const MathApp = (() => {
+  const CATS = {
+    multiplication:{bg:"#10b981",light:"#ecfdf5",icon:"\u00d7",ring:"#6ee7b7",label:"Multiplication"},
+    division:{bg:"#0ea5e9",light:"#f0f9ff",icon:"\u00f7",ring:"#7dd3fc",label:"Division"},
+    fractions:{bg:"#f59e0b",light:"#fffbeb",icon:"\u00bd",ring:"#fcd34d",label:"Fractions"},
+    rounding:{bg:"#8b5cf6",light:"#f5f3ff",icon:"\u2248",ring:"#c4b5fd",label:"Rounding"},
+  };
+
+  let state = {screen:'home',problems:[],idx:0,input:'',fracNum:'',fracDen:'',feedback:null,score:0,lives:3,wrongProblems:[],retrying:false,selectedCategory:'mixed',saved:false};
+
+  function rand(min,max){return Math.floor(Math.random()*(max-min+1))+min}
+  function fmt(n){return n.toLocaleString()}
+  function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b]}return a}
+  function simplify(n,d){const g=gcd(n,d);return [n/g,d/g]}
+
+  function catBadge(cat,size){
+    const c=CATS[cat];if(!c)return'';
+    const p=size==='large'?'6px 20px':'4px 14px';const fs=size==='large'?'14px':'13px';const is=size==='large'?22:18;
+    return '<span class="cat-badge" style="background:'+c.bg+';padding:'+p+';font-size:'+fs+'"><span class="badge-icon" style="width:'+is+'px;height:'+is+'px;font-size:'+Math.round(is*0.6)+'px;font-weight:900">'+c.icon+'</span>'+c.label+'</span>';
+  }
+
+  /* ── Problem Generators ── */
+  function genMultiplication(difficulty){
+    let a,b,diff;
+    switch(difficulty||rand(0,3)){
+      case 0:a=rand(10,99);b=rand(2,9);diff='2\u00d71';break;
+      case 1:a=rand(100,999);b=rand(2,9);diff='3\u00d71';break;
+      case 2:a=rand(1000,9999);b=rand(2,9);diff='4\u00d71';break;
+      default:a=rand(10,99);b=rand(10,99);diff='2\u00d72';
+    }
+    const ans=a*b;
+    return {
+      question:fmt(a)+' \u00d7 '+fmt(b),answer:String(ans),answerType:'number',
+      display:'<div style="text-align:center"><div class="math-vertical" style="display:inline-block;position:relative;padding-left:30px"><div>'+fmt(a)+'</div><div style="position:relative"><span style="position:absolute;left:-28px;bottom:0;font-size:22px">\u00d7</span>'+fmt(b)+'</div><div class="math-divider"></div></div></div>',
+      category:'multiplication',categoryLabel:'Multiplication',difficulty:diff
+    };
+  }
+
+  function genDivision(){
+    const divisor=rand(2,9);
+    const hasRemainder=Math.random()<0.3;
+    const quotient=rand(10,999);
+    const remainder=hasRemainder?rand(1,divisor-1):0;
+    const dividend=divisor*quotient+remainder;
+    const ans=hasRemainder?quotient+' R'+remainder:String(quotient);
+    return {
+      question:fmt(dividend)+' \u00f7 '+divisor,answer:ans,answerType:'number',
+      display:'<div style="text-align:center"><div style="display:inline-block;text-align:right"><div class="math-vertical"><div style="display:flex;align-items:center;gap:6px;justify-content:center"><span style="font-size:22px">'+divisor+'</span><span style="font-size:18px;color:#9ca3af;margin:0 4px">\u27CC</span><span style="border-top:3px solid #374151;padding:2px 8px">'+fmt(dividend)+'</span></div></div></div></div>',
+      category:'division',categoryLabel:'Division',difficulty:dividend>999?'hard':'normal'
+    };
+  }
+
+  function genFraction(){
+    const type=rand(0,2);
+    if(type===0){
+      const d1=rand(2,6);const n1=rand(1,d1-1);const mult=rand(2,4);
+      const d2=d1*mult;const n2=n1*mult;
+      const showN=Math.random()<0.5;
+      if(showN){
+        return {
+          question:n1+'/'+d1+' = ?/'+d2,answer:String(n2),answerType:'number',
+          display:'<div style="text-align:center;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap"><div class="frac"><span class="frac-num">'+n1+'</span><span class="frac-bar"></span><span class="frac-den">'+d1+'</span></div><span class="math-eq">=</span><div class="frac"><span class="frac-num">?</span><span class="frac-bar"></span><span class="frac-den">'+d2+'</span></div></div>',
+          category:'fractions',categoryLabel:'Fractions',difficulty:'equivalent'
+        };
+      } else {
+        return {
+          question:n1+'/'+d1+' = '+n2+'/?',answer:String(d2),answerType:'number',
+          display:'<div style="text-align:center;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap"><div class="frac"><span class="frac-num">'+n1+'</span><span class="frac-bar"></span><span class="frac-den">'+d1+'</span></div><span class="math-eq">=</span><div class="frac"><span class="frac-num">'+n2+'</span><span class="frac-bar"></span><span class="frac-den">?</span></div></div>',
+          category:'fractions',categoryLabel:'Fractions',difficulty:'equivalent'
+        };
+      }
+    } else if(type===1){
+      const d=rand(3,12);
+      const isAdd=Math.random()<0.6;
+      let n1,n2;
+      if(isAdd){n1=rand(1,d-2);n2=rand(1,d-n1)} else {n1=rand(2,d-1);n2=rand(1,n1-1)}
+      const ansN=isAdd?n1+n2:n1-n2;
+      const [sn,sd]=simplify(ansN,d);
+      const op=isAdd?'+':'\u2212';
+      return {
+        question:n1+'/'+d+' '+op+' '+n2+'/'+d,answer:sn+'/'+sd,answerType:'fraction',
+        display:'<div style="text-align:center;display:flex;align-items:center;justify-content:center;gap:2px;flex-wrap:wrap"><div class="frac"><span class="frac-num">'+n1+'</span><span class="frac-bar"></span><span class="frac-den">'+d+'</span></div><span class="math-op">'+op+'</span><div class="frac"><span class="frac-num">'+n2+'</span><span class="frac-bar"></span><span class="frac-den">'+d+'</span></div><span class="math-eq">=</span></div>',
+        category:'fractions',categoryLabel:'Fractions',difficulty:'add-sub'
+      };
+    } else {
+      const d=rand(2,8);const n=rand(1,d-1);const w=rand(2,6);
+      const resN=n*w;const [sn,sd]=simplify(resN,d);
+      const ans=sd===1?String(sn):sn+'/'+sd;
+      const aType=sd===1?'number':'fraction';
+      return {
+        question:w+' \u00d7 '+n+'/'+d,answer:ans,answerType:aType,
+        display:'<div style="text-align:center;display:flex;align-items:center;justify-content:center;gap:2px;flex-wrap:wrap"><span class="math-op">'+w+'</span><span class="math-op">\u00d7</span><div class="frac"><span class="frac-num">'+n+'</span><span class="frac-bar"></span><span class="frac-den">'+d+'</span></div><span class="math-eq">=</span></div>',
+        category:'fractions',categoryLabel:'Fractions',difficulty:'multiply'
+      };
+    }
+  }
+
+  function genRounding(){
+    const targets=[10,100,1000];
+    const target=targets[rand(0,2)];
+    let num;
+    if(target===10)num=rand(100,9999);
+    else if(target===100)num=rand(100,99999);
+    else num=rand(1000,99999);
+    const ans=Math.round(num/target)*target;
+    return {
+      question:'Round '+fmt(num)+' to nearest '+fmt(target),answer:String(ans),answerType:'number',
+      display:'<div style="text-align:center"><div style="font-family:\'Fredoka One\',cursive;font-size:36px;color:#1e1b4b;margin-bottom:8px">'+fmt(num)+'</div><div style="font-size:15px;color:#6b7280;font-weight:700">Round to the nearest <span style="color:'+CATS.rounding.bg+';font-weight:900">'+fmt(target)+'</span></div></div>',
+      category:'rounding',categoryLabel:'Rounding',difficulty:'nearest '+fmt(target)
+    };
+  }
+
+  function generateSession(category,count){
+    const problems=[];
+    if(category==='mixed'){
+      for(let i=0;i<7;i++)problems.push(genMultiplication(i<2?0:i<4?1:i<6?2:3));
+      for(let i=0;i<4;i++)problems.push(genDivision());
+      for(let i=0;i<4;i++)problems.push(genFraction());
+      for(let i=0;i<3;i++)problems.push(genRounding());
+    } else if(category==='multiplication'){
+      for(let i=0;i<count;i++)problems.push(genMultiplication(Math.floor(i/(count/4))));
+    } else if(category==='division'){
+      for(let i=0;i<count;i++)problems.push(genDivision());
+    } else if(category==='fractions'){
+      for(let i=0;i<count;i++)problems.push(genFraction());
+    } else if(category==='rounding'){
+      for(let i=0;i<count;i++)problems.push(genRounding());
+    }
+    if(category==='mixed'){
+      const bands=[[0,7],[7,11],[11,15],[15,18]];
+      const shuffled=[];
+      bands.forEach(([s,e])=>{const b=problems.slice(s,e).sort(()=>Math.random()-0.5);shuffled.push(...b)});
+      return shuffled;
+    }
+    return problems.sort(()=>Math.random()-0.5);
+  }
+
+  function getUserAnswer(){
+    const prob=state.problems[state.idx];
+    if(prob.answerType==='fraction'){
+      const n=state.fracNum.trim(),d=state.fracDen.trim();
+      if(!n||!d)return'';
+      return n+'/'+d;
+    }
+    return state.input.trim();
+  }
+
+  function checkAnswer(given,expected,prob){
+    if(!given)return false;
+    if(prob.answerType==='fraction'&&expected.includes('/')){
+      const [en,ed]=expected.split('/').map(Number);
+      const parts=given.split('/');if(parts.length!==2)return false;
+      const [gn,gd]=parts.map(Number);
+      if(isNaN(gn)||isNaN(gd)||gd===0)return false;
+      const [sn1,sd1]=simplify(en,ed);
+      const [sn2,sd2]=simplify(gn,gd);
+      return sn1===sn2&&sd1===sd2;
+    }
+    const norm=s=>s.replace(/,/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+    return norm(given)===norm(expected);
+  }
+
+  function inputHTML(prob){
+    const disabled=state.feedback?'disabled':'';
+    const cls=state.feedback==='correct'?'correct':state.feedback==='wrong'||state.feedback==='retry'?'wrong':'';
+    if(prob.answerType==='fraction'){
+      return '<div style="display:flex;align-items:center;justify-content:center;gap:4px"><div class="frac"><input id="mainInput" class="frac-input '+cls+'" type="number" inputmode="numeric" value="'+state.fracNum+'" placeholder="?" '+disabled+' oninput="MathApp.getState().fracNum=this.value" onkeydown="if(event.key===\'Enter\'){document.getElementById(\'denInput\').focus()}"><span class="frac-bar"></span><input id="denInput" class="frac-input '+cls+'" type="number" inputmode="numeric" value="'+state.fracDen+'" placeholder="?" '+disabled+' oninput="MathApp.getState().fracDen=this.value" onkeydown="if(event.key===\'Enter\')mathSubmit()"></div></div>';
+    }
+    return '<div style="display:flex;justify-content:center"><input id="mainInput" class="math-input '+cls+'" type="text" inputmode="'+(prob.answer.includes('R')?'text':'numeric')+'" value="'+state.input.replace(/"/g,'&quot;')+'" placeholder="?" '+disabled+' oninput="MathApp.getState().input=this.value" onkeydown="if(event.key===\'Enter\')mathSubmit()" autocomplete="off"></div>';
+  }
+
+  function startQuiz(category){
+    const count=category==='mixed'?18:15;
+    const problems=generateSession(category,count);
+    state={screen:'quiz',problems:problems,idx:0,input:'',fracNum:'',fracDen:'',feedback:null,score:0,lives:3,wrongProblems:[],retrying:false,selectedCategory:category,saved:false};
+    render();
+    setTimeout(()=>{const inp=document.getElementById('mainInput');if(inp)inp.focus({preventScroll:true})},300);
+  }
+
+  function submit(){
+    const given=getUserAnswer();
+    if(!given||state.feedback)return;
+    const prob=state.problems[state.idx];
+    const correct=checkAnswer(given,prob.answer,prob);
+
+    if(correct){
+      state.feedback='correct';state.score++;S.spawnConfetti(true);render();
+      setTimeout(()=>{
+        state.feedback=null;state.input='';state.fracNum='';state.fracDen='';state.retrying=false;
+        if(state.idx+1>=state.problems.length){state.screen='result';render()}
+        else{state.idx++;render();setTimeout(()=>{const inp=document.getElementById('mainInput');if(inp)inp.focus({preventScroll:true})},200)}
+      },1100);
+    } else if(!state.retrying){
+      state.feedback='retry';S.spawnConfetti(false);render();
+      setTimeout(()=>{
+        state.feedback=null;state.input='';state.fracNum='';state.fracDen='';state.retrying=true;render();
+        setTimeout(()=>{const inp=document.getElementById('mainInput');if(inp)inp.focus({preventScroll:true})},200);
+      },2000);
+    } else {
+      state.feedback='wrong';
+      if(!state.wrongProblems.find(w=>w.question===prob.question))state.wrongProblems.push({...prob,given:given});
+      state.lives--;S.spawnConfetti(false);render();
+      const nl=state.lives;
+      setTimeout(()=>{
+        state.feedback=null;state.input='';state.fracNum='';state.fracDen='';state.retrying=false;
+        if(state.idx+1>=state.problems.length||nl<=0){state.screen='result';render()}
+        else{state.idx++;render();setTimeout(()=>{const inp=document.getElementById('mainInput');if(inp)inp.focus({preventScroll:true})},200)}
+      },2200);
+    }
+  }
+
+  function progressHTML(){
+    const last=S.getLastSession('math');const week=S.getWeekSessions('math');
+    if(!last)return'';
+    const pct=Math.round(last.score/last.total*100);
+    const dotColor=pct>=80?'#22c55e':pct>=60?'#f59e0b':'#ef4444';
+    let html='<div class="glass" style="border-radius:14px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px"><div style="width:10px;height:10px;border-radius:50%;background:'+dotColor+';flex-shrink:0"></div><div><span style="color:#fff;font-weight:800;font-size:14px">Last: '+last.score+'/'+last.total+' ('+pct+'%)</span>';
+    if(week.length>1){const avg=Math.round(week.reduce((s,x)=>s+x.score/x.total,0)/week.length*100);html+=' <span style="color:rgba(255,255,255,0.6);font-size:12px">&middot; This week: '+week.length+' sessions, avg '+avg+'%</span>'}
+    html+='</div></div>';
+    return html;
+  }
+
+  function render(){
+    const {screen,problems,idx,feedback,score,lives,wrongProblems,retrying,selectedCategory,saved}=state;
+    const prob=problems[idx];
+    const cc=prob?CATS[prob.category]:null;
+    const progress=problems.length?(idx/problems.length)*100:0;
+    const pct=score/(problems.length||1);
+    const screenEl=document.getElementById('screen-math');
+    const appEl=document.getElementById('math-app');
+
+    if(screen==='home'){
+      screenEl.className='screen'+(activeTab==='math'?' active':'');
+      screenEl.style.background='linear-gradient(135deg,#059669 0%,#10b981 50%,#34d399 100%)';
+      appEl.innerHTML=
+        '<div class="fadeUp" style="text-align:center;max-width:480px;width:100%">'+
+          '<div class="float" style="margin-bottom:12px;color:#fff;opacity:0.95">'+S.icon('calculator',64)+'</div>'+
+          '<h1 style="font-family:\'Fredoka One\',cursive;font-size:40px;color:#fff;margin:0 0 8px;text-shadow:0 2px 12px rgba(0,0,0,0.15)">Math Quiz</h1>'+
+          '<p style="color:rgba(255,255,255,0.92);font-weight:800;font-size:17px;margin:0 0 4px">4th Grade Math Practice</p>'+
+          '<p style="color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:20px">3 lives &middot; Second chance on mistakes</p>'+
+          progressHTML()+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'+
+            Object.entries(CATS).map(([key,c])=>
+              '<button class="cat-btn" onclick="mathStartQuiz(\''+key+'\')"><div class="cat-icon" style="background:'+c.bg+'">'+c.icon+'</div>'+c.label+'</button>'
+            ).join('')+
+          '</div>'+
+          '<button onclick="mathStartQuiz(\'mixed\')" class="btn-primary" style="--accent:#fff;--accent-dark:#f0f0f0;color:#059669;padding:18px 56px;font-size:22px;display:inline-flex;align-items:center;gap:10px;width:100%;justify-content:center">'+
+            S.icon('rocket',22,'#059669')+' Mixed Quiz'+
+          '</button>'+
+        '</div>';
+    }
+
+    else if(screen==='quiz'&&prob){
+      screenEl.className='screen quiz-mode'+(activeTab==='math'?' active':'');
+      screenEl.style.background='linear-gradient(160deg,'+cc.light+' 0%,#fff 100%)';
+      appEl.innerHTML=
+        '<div style="width:100%;max-width:500px">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+            '<div style="display:flex;gap:4px">'+
+              [0,1,2].map(i=>'<span class="heart '+(i<lives?'':'heart--empty')+'" style="font-size:22px">'+S.icon('heart',22,i<lives?'#ef4444':'#d1d5db')+'</span>').join('')+
+            '</div>'+
+            '<div class="score-pill" style="padding:4px 12px;font-size:14px">'+S.icon('star',14,'#f59e0b')+'<span>'+score+' / '+problems.length+'</span></div>'+
+          '</div>'+
+          '<div class="progress-track" style="margin-bottom:10px;height:6px"><div class="progress-fill" style="width:'+progress+'%;background:linear-gradient(90deg,'+cc.bg+','+cc.ring+')"></div></div>'+
+          '<div id="card" class="quiz-card '+(feedback==='wrong'?'shake':feedback==='correct'?'bounce':'')+'" style="border-top:4px solid '+cc.bg+'">'+
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+catBadge(prob.category,'large')+'<span style="color:#9ca3af;font-size:12px;font-weight:700">Problem '+(idx+1)+' of '+problems.length+'</span></div>'+
+            '<div style="margin-bottom:16px;min-height:60px">'+prob.display+'</div>'+
+            (retrying?'<div style="text-align:center;margin-bottom:8px;font-size:14px;font-family:\'Fredoka One\',cursive;color:#f59e0b;display:flex;align-items:center;justify-content:center;gap:6px">'+S.icon('refresh',14,'#f59e0b')+' Try again!</div>':'')+
+            inputHTML(prob)+
+            (feedback==='correct'?'<div class="pop" style="text-align:center;margin-top:10px;font-size:18px;font-family:\'Fredoka One\',cursive;color:#16a34a;display:flex;align-items:center;justify-content:center;gap:8px">'+S.icon('check',20,'#16a34a')+' '+S.PRAISE[rand(0,S.PRAISE.length-1)]+'</div>':'')+
+            (feedback==='retry'?'<div class="pop" style="text-align:center;margin-top:10px;font-size:18px;font-family:\'Fredoka One\',cursive;color:#f59e0b;display:flex;align-items:center;justify-content:center;gap:8px">'+S.icon('refresh',18,'#f59e0b')+' Not quite \u2014 one more try!</div>':'')+
+            (feedback==='wrong'?'<div class="pop" style="text-align:center;margin-top:10px;font-size:18px;font-family:\'Fredoka One\',cursive;color:#dc2626">Answer: '+prob.answer+'</div>':'')+
+            (!feedback?'<div style="margin-top:12px"><button onclick="mathSubmit()" class="btn-primary" style="width:100%;--accent:'+cc.bg+';border-radius:14px;padding:12px 18px;font-size:16px;font-family:\'Fredoka One\',cursive;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+S.icon('check',16,'#fff')+' Check</button></div>':'')+
+          '</div>'+
+        '</div>';
+    }
+
+    else if(screen==='result'){
+      screenEl.className='screen'+(activeTab==='math'?' active':'');
+      screenEl.style.background='linear-gradient(135deg,#059669 0%,#10b981 50%,#34d399 100%)';
+      if(!saved){
+        state.saved=true;
+        S.saveSessionData({id:'math_'+Date.now(),app:'math',date:new Date().toISOString(),score:score,total:problems.length,category:selectedCategory,wrong:wrongProblems.map(w=>({question:w.question,answer:w.answer,given:w.given||''}))});
+      }
+      const ri=pct===1?S.icon('trophy',64,'#fbbf24'):pct>=0.8?S.icon('star',64,'#fbbf24'):pct>=0.6?S.icon('sparkles',64,'#fbbf24'):S.icon('heart',64,'#f472b6');
+      appEl.innerHTML=
+        '<div class="fadeUp" style="text-align:center;max-width:500px;width:100%">'+
+          '<div style="margin-bottom:12px">'+ri+'</div>'+
+          '<h2 style="font-family:\'Fredoka One\',cursive;font-size:38px;color:#fff;margin:0 0 6px;text-shadow:0 2px 12px rgba(0,0,0,0.15)">'+(pct===1?'Perfect Score!':pct>=0.8?'Great Job!':pct>=0.6?'Nice Work!':'Keep Going!')+'</h2>'+
+          '<p style="color:rgba(255,255,255,0.9);font-size:22px;font-weight:800;margin-bottom:24px">'+score+' out of '+problems.length+' correct</p>'+
+          (wrongProblems.length>0?
+            '<div class="glass" style="border-radius:20px;padding:18px 22px;margin-bottom:28px;text-align:left">'+
+              '<p style="color:#fff;font-weight:800;font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px">'+S.icon('book',18,'#fff')+' Review these:</p>'+
+              wrongProblems.map(w=>
+                '<div class="word-item">'+catBadge(w.category)+
+                '<div style="flex:1;color:#fff;font-weight:800;font-size:14px"><div>'+w.question+'</div><div style="color:#6ee7b7;font-size:13px">Answer: '+w.answer+'</div></div></div>'
+              ).join('')+
+            '</div>':'')+
+          '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">'+
+            '<button onclick="mathStartQuiz(\''+selectedCategory+'\')" class="btn-primary" style="--accent:#fff;color:#059669;padding:16px 36px;font-size:18px;display:inline-flex;align-items:center;gap:8px">'+S.icon('refresh',18,'#059669')+' Try Again</button>'+
+            '<button onclick="switchTab(\'home\')" class="btn-ghost" style="padding:16px 28px;font-size:18px;display:inline-flex;align-items:center;gap:8px">'+S.icon('home',18,'#fff')+' Home</button>'+
+          '</div>'+
+        '</div>';
+    }
+    updateTabBar();
+  }
+
+  return {render,startQuiz,submit,getState:()=>state,getUserAnswer,checkAnswer};
+})();
+
+
+/* ══════════════════════════════════════════════
+   SPELLING APP
+   ══════════════════════════════════════════════ */
+const SpellApp = (() => {
+  const API_KEY = 'sk_b75b3ea6eddc2b5a442e6c6d92902dd59143283efc07223e';
+  const VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
+
+  const WORDS = [
+    {word:"response",cat:"'s' spelling",hint:"What you give when someone asks you something"},
+    {word:"subject",cat:"'s' spelling",hint:"A topic you study in school"},
+    {word:"scoundrel",cat:"'s' spelling",hint:"A sneaky, dishonest person \u2014 a villain!"},
+    {word:"princess",cat:"'c' spelling",hint:"Royalty \u2014 a king or queen's daughter"},
+    {word:"central",cat:"'c' spelling",hint:"In the middle, like the center"},
+    {word:"civil",cat:"'c' spelling",hint:"Being polite; relating to citizens"},
+    {word:"assembly",cat:"'ss' spelling",hint:"A group of people gathered together"},
+    {word:"address",cat:"'ss' spelling",hint:"Where you live; or to speak to someone"},
+    {word:"advice",cat:"'ce' spelling",hint:"Helpful tips or suggestions"},
+    {word:"mince",cat:"'ce' spelling",hint:"To chop food into tiny pieces"},
+    {word:"glance",cat:"'ce' spelling",hint:"A quick look at something"},
+    {word:"universe",cat:"'se' spelling",hint:"Everything that exists \u2014 stars, planets, and all!"},
+    {word:"promise",cat:"'se' spelling",hint:"A pledge you make to someone"},
+    {word:"listen",cat:"'st' spelling",hint:"To pay attention to sounds"},
+    {word:"whistle",cat:"'st' spelling",hint:"A sharp sound made by blowing air"},
+    {word:"scent",cat:"'sc' spelling",hint:"A smell or fragrance"},
+    {word:"fascinate",cat:"'sc' spelling",hint:"To be totally amazed and interested"},
+    {word:"during",cat:"Challenge",hint:"While something is happening"},
+    {word:"want",cat:"Challenge",hint:"To wish for or desire something"},
+  ];
+
+  const COLORS = {
+    "'s' spelling":{bg:"#ef4444",light:"#fef2f2",icon:'S',ring:"#fca5a5"},
+    "'c' spelling":{bg:"#f59e0b",light:"#fffbeb",icon:'C',ring:"#fcd34d"},
+    "'ss' spelling":{bg:"#3b82f6",light:"#eff6ff",icon:'SS',ring:"#93c5fd"},
+    "'ce' spelling":{bg:"#8b5cf6",light:"#f5f3ff",icon:'CE',ring:"#c4b5fd"},
+    "'se' spelling":{bg:"#06b6d4",light:"#ecfeff",icon:'SE',ring:"#67e8f9"},
+    "'st' spelling":{bg:"#10b981",light:"#ecfdf5",icon:'ST',ring:"#6ee7b7"},
+    "'sc' spelling":{bg:"#f97316",light:"#fff7ed",icon:'SC',ring:"#fdba74"},
+    "Challenge":{bg:"#ec4899",light:"#fdf2f8",icon:'\u2605',ring:"#f9a8d4"},
+  };
+
+  const SPRAISE = ["Nailed it!","Amazing!","Perfect!","Got it!","Brilliant!"];
+
+  let state = {screen:"home",words:[],idx:0,input:"",feedback:null,score:0,lives:3,wrongWords:[],speaking:false,retrying:false,saved:false};
+  let currentAudio = null;
+  let persistentInput = null;
+
+  function catBadge(cat,size){
+    const c=COLORS[cat];if(!c)return'';
+    const p=size==='large'?'6px 20px':'4px 14px';const fs=size==='large'?'14px':'13px';const is=size==='large'?22:18;
+    return '<span class="cat-badge" style="background:'+c.bg+';padding:'+p+';font-size:'+fs+'"><span class="badge-icon" style="width:'+is+'px;height:'+is+'px;font-size:'+Math.round(is*0.6)+'px;font-weight:900">'+c.icon+'</span>'+cat+'</span>';
+  }
+
+  function setupInput(){
+    persistentInput = document.getElementById('persistentInput');
+    persistentInput.addEventListener('input', e => { state.input = e.target.value; });
+    persistentInput.addEventListener('keydown', e => { if(e.key==='Enter') submit(); });
+    persistentInput.addEventListener('blur', () => {
+      if(activeTab==='spelling' && state.screen==='quiz' && !state.feedback){
+        setTimeout(()=>{
+          if(activeTab==='spelling' && state.screen==='quiz' && !state.feedback){
+            persistentInput.focus({preventScroll:true});
+          }
+        },50);
+      }
+    });
+  }
+
+  function showPersistentInput(borderColor,isDisabled){
+    const pi=persistentInput;
+    pi.style.cssText='';pi.className='';
+    if(state.feedback==='correct')pi.className='correct';
+    else if(state.feedback==='wrong'||state.feedback==='retry')pi.className='wrong';
+    else pi.style.borderColor=borderColor;
+    pi.disabled=isDisabled;
+  }
+
+  function hidePersistentInput(){
+    persistentInput.style.cssText='position:fixed;left:-9999px;opacity:0;pointer-events:none';
+    persistentInput.disabled=true;
+  }
+
+  function focusInput(){
+    if(persistentInput && state.screen==='quiz' && !state.feedback){
+      persistentInput.focus({preventScroll:true});
+    }
+  }
+
+  async function speak(word,slow){
+    if(currentAudio){currentAudio.pause();currentAudio=null;}
+    state.speaking=true;render();
+    try{
+      const res=await fetch('https://api.elevenlabs.io/v1/text-to-speech/'+VOICE_ID,{
+        method:'POST',
+        headers:{'xi-api-key':API_KEY,'Content-Type':'application/json','Accept':'audio/mpeg'},
+        body:JSON.stringify({text:word,model_id:'eleven_monolingual_v1',voice_settings:{stability:slow?0.85:0.5,similarity_boost:0.75,speed:slow?0.6:1.0}})
+      });
+      if(!res.ok)throw new Error('ElevenLabs error');
+      const blob=await res.blob();const url=URL.createObjectURL(blob);
+      const audio=new Audio(url);currentAudio=audio;
+      audio.onended=()=>{state.speaking=false;URL.revokeObjectURL(url);render()};
+      audio.onerror=()=>{state.speaking=false;render()};
+      await audio.play();
+    }catch(e){
+      state.speaking=false;
+      if(window.speechSynthesis){window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(word);u.rate=slow?0.5:0.85;u.pitch=1.0;window.speechSynthesis.speak(u)}
+      render();
+    }
+  }
+
+  function startQuiz(){
+    const shuffled=[...WORDS].sort(()=>Math.random()-0.5);
+    state={screen:"quiz",words:shuffled,idx:0,input:"",feedback:null,score:0,lives:3,wrongWords:[],speaking:false,retrying:false,saved:false};
+    persistentInput.value='';
+    render();
+    setTimeout(()=>{focusInput();speak(shuffled[0].word)},300);
+  }
+
+  function submit(){
+    const {words,idx,input,feedback,lives,retrying}=state;
+    if(!input.trim()||feedback)return;
+    const current=words[idx];
+    const correct=input.trim().toLowerCase()===current.word.toLowerCase();
+
+    if(correct){
+      state.feedback='correct';state.score++;S.spawnConfetti(true);
+      persistentInput.disabled=true;render();
+      setTimeout(()=>{
+        state.feedback=null;state.input='';state.retrying=false;
+        persistentInput.value='';persistentInput.disabled=false;
+        if(state.idx+1>=state.words.length){state.screen='result';render()}
+        else{state.idx++;render();focusInput();setTimeout(()=>speak(state.words[state.idx].word),300)}
+      },1100);
+    }
+    else if(!retrying){
+      state.feedback='retry';S.spawnConfetti(false);
+      setTimeout(()=>speak(current.word,true),600);
+      persistentInput.disabled=true;render();
+      setTimeout(()=>{
+        state.feedback=null;state.input='';state.retrying=true;
+        persistentInput.value='';persistentInput.disabled=false;
+        render();focusInput();
+      },2000);
+    }
+    else{
+      state.feedback='wrong';
+      if(!state.wrongWords.find(w=>w.word===current.word))state.wrongWords.push(current);
+      state.lives--;S.spawnConfetti(false);
+      setTimeout(()=>speak(current.word,true),600);
+      persistentInput.disabled=true;render();
+      const nextLives=lives-1;
+      setTimeout(()=>{
+        state.feedback=null;state.input='';state.retrying=false;
+        persistentInput.value='';persistentInput.disabled=false;
+        if(state.idx+1>=state.words.length||nextLives<=0){state.screen='result';render()}
+        else{state.idx++;render();focusInput();setTimeout(()=>speak(state.words[state.idx].word),300)}
+      },2200);
+    }
+  }
+
+  function spellProgressHTML(){
+    const last=S.getLastSession('spelling');const week=S.getWeekSessions('spelling');
+    if(!last)return'';
+    const pct=Math.round(last.score/last.total*100);
+    const dotColor=pct>=80?'#22c55e':pct>=60?'#f59e0b':'#ef4444';
+    let h='<div class="glass" style="border-radius:14px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px"><div style="width:10px;height:10px;border-radius:50%;background:'+dotColor+';flex-shrink:0"></div><div><span style="color:#fff;font-weight:800;font-size:14px">Last: '+last.score+'/'+last.total+' ('+pct+'%)</span>';
+    if(week.length>1){const avg=Math.round(week.reduce((s,x)=>s+x.score/x.total,0)/week.length*100);h+=' <span style="color:rgba(255,255,255,0.6);font-size:12px">&middot; This week: '+week.length+' sessions, avg '+avg+'%</span>'}
+    h+='</div></div>';return h;
+  }
+
+  function render(){
+    const {screen,words,idx,input,feedback,score,lives,wrongWords,speaking,retrying}=state;
+    const current=words[idx];
+    const cc=current?COLORS[current.cat]:null;
+    const progress=words.length?(idx/words.length)*100:0;
+    const pct=score/(words.length||1);
+    const screenEl=document.getElementById('screen-spelling');
+    const appEl=document.getElementById('spell-app');
+
+    if(screen==='home'){
+      screenEl.className='screen'+(activeTab==='spelling'?' active':'');
+      screenEl.style.background='linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#d946ef 100%)';
+      hidePersistentInput();
+      appEl.innerHTML=
+        '<div class="fadeUp" style="text-align:center;max-width:480px;width:100%">'+
+          '<div class="float" style="margin-bottom:12px;color:#fff;opacity:0.95">'+S.icon('pencil',64)+'</div>'+
+          '<h1 style="font-family:\'Fredoka One\',cursive;font-size:40px;color:#fff;margin:0 0 8px;text-shadow:0 2px 12px rgba(0,0,0,0.15)">Spelling Quiz</h1>'+
+          '<p style="color:rgba(255,255,255,0.92);font-weight:800;font-size:17px;margin:0 0 4px">Spelling List 14 &middot; The /s/ Sound</p>'+
+          '<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0 4px;color:rgba(255,255,255,0.8);font-size:14px;font-weight:700">'+S.icon('volume',14)+' Powered by ElevenLabs \u2014 real voice!</div>'+
+          '<p style="color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:16px">'+WORDS.length+' words &middot; 3 lives &middot; Second chance on mistakes</p>'+
+          spellProgressHTML()+
+          '<div class="glass" style="border-radius:20px;padding:18px 20px;margin-bottom:28px;text-align:left">'+
+            Object.entries(COLORS).map(([cat,c])=>
+              '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">'+catBadge(cat)+
+              '<span style="color:rgba(255,255,255,0.78);font-size:13px;font-weight:600">'+WORDS.filter(w=>w.cat===cat).map(w=>w.word).join(', ')+'</span></div>'
+            ).join('')+
+          '</div>'+
+          '<button onclick="spellStartQuiz()" class="btn-primary" style="--accent:#fff;--accent-dark:#f0f0f0;color:#7c3aed;padding:18px 56px;font-size:22px;display:inline-flex;align-items:center;gap:10px">'+S.icon('rocket',22,'#7c3aed')+' Start!</button>'+
+        '</div>';
+    }
+
+    else if(screen==='quiz'&&current){
+      screenEl.className='screen quiz-mode'+(activeTab==='spelling'?' active':'');
+      screenEl.style.background='linear-gradient(160deg,'+cc.light+' 0%,#fff 100%)';
+      const speakerBtn=speaking
+        ?'<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:14px;height:14px;border:2.5px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite"></span>Playing&hellip;</span>'
+        :'<span style="display:inline-flex;align-items:center;gap:6px">'+S.icon('volume',16,'#fff')+' Hear Word</span>';
+
+      appEl.innerHTML=
+        '<div style="width:100%;max-width:500px">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+            '<div style="display:flex;gap:4px">'+
+              [0,1,2].map(i=>'<span class="heart '+(i<lives?'':'heart--empty')+'" style="color:#ef4444;font-size:22px">'+S.icon('heart',22,i<lives?'#ef4444':'#d1d5db')+'</span>').join('')+
+            '</div>'+
+            '<div class="score-pill" style="padding:4px 12px;font-size:14px">'+S.icon('star',14,'#f59e0b')+'<span>'+score+' / '+words.length+'</span></div>'+
+          '</div>'+
+          '<div class="progress-track" style="margin-bottom:10px;height:6px"><div class="progress-fill" style="width:'+progress+'%;background:linear-gradient(90deg,'+cc.bg+','+cc.ring+')"></div></div>'+
+          '<div id="card" class="quiz-card '+(feedback==='wrong'?'shake':feedback==='correct'?'bounce':'')+'" style="border-top:4px solid '+cc.bg+'">'+
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+catBadge(current.cat,'large')+'<span style="color:#9ca3af;font-size:12px;font-weight:700">Word '+(idx+1)+' of '+words.length+'</span></div>'+
+            '<div style="display:flex;gap:8px;margin-bottom:10px;justify-content:center">'+
+              '<button onclick="spellSpeak(\''+current.word+'\',false)" '+(speaking?'disabled':'')+' class="btn-primary" style="--accent:'+cc.bg+';padding:10px 20px;font-size:14px;font-family:\'Fredoka One\',cursive;opacity:'+(speaking?0.85:1)+'">'+speakerBtn+'</button>'+
+              '<button onclick="spellSpeak(\''+current.word+'\',true)" '+(speaking?'disabled':'')+' class="btn-secondary" style="background:'+cc.light+';color:'+cc.bg+';padding:10px 14px;font-size:13px;display:inline-flex;align-items:center;gap:4px;opacity:'+(speaking?0.6:1)+'">'+S.icon('turtle',15,cc.bg)+' Slow</button>'+
+            '</div>'+
+            (retrying?'<div style="text-align:center;margin-bottom:8px;font-size:14px;font-family:\'Fredoka One\',cursive;color:#f59e0b;display:flex;align-items:center;justify-content:center;gap:6px">'+S.icon('refresh',14,'#f59e0b')+' Try again! Listen carefully&hellip;</div>':'')+
+            '<div id="inputSlot"></div>'+
+            (feedback==='correct'?'<div class="pop" style="text-align:center;margin-top:10px;font-size:18px;font-family:\'Fredoka One\',cursive;color:#16a34a;display:flex;align-items:center;justify-content:center;gap:8px">'+S.icon('check',20,'#16a34a')+' '+SPRAISE[Math.floor(Math.random()*SPRAISE.length)]+'</div>':'')+
+            (feedback==='retry'?'<div class="pop" style="text-align:center;margin-top:10px;font-size:18px;font-family:\'Fredoka One\',cursive;color:#f59e0b;display:flex;align-items:center;justify-content:center;gap:8px">'+S.icon('refresh',18,'#f59e0b')+' Not quite \u2014 one more try!</div>':'')+
+            (feedback==='wrong'?'<div class="pop" style="text-align:center;margin-top:10px;font-size:18px;font-family:\'Fredoka One\',cursive;color:#dc2626;display:flex;align-items:center;justify-content:center;gap:8px"><span>It\'s spelled \u201c'+current.word+'\u201d</span></div>':'')+
+            (!feedback?'<div style="margin-top:12px"><button onclick="spellSubmit()" class="btn-primary" style="width:100%;--accent:'+cc.bg+';border-radius:14px;padding:12px 18px;font-size:16px;font-family:\'Fredoka One\',cursive;display:inline-flex;align-items:center;justify-content:center;gap:6px">'+S.icon('check',16,'#fff')+' Check</button></div>':'')+
+          '</div>'+
+        '</div>';
+
+      // Move persistent input into slot
+      const slot=document.getElementById('inputSlot');
+      if(slot&&persistentInput){
+        slot.appendChild(persistentInput);
+        showPersistentInput(cc.bg,!!feedback);
+        if(!feedback)focusInput();
+      }
+    }
+
+    else if(screen==='result'){
+      screenEl.className='screen'+(activeTab==='spelling'?' active':'');
+      screenEl.style.background='linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#d946ef 100%)';
+      hidePersistentInput();
+      // Move persistent input back to screen so it doesn't get destroyed
+      document.getElementById('screen-spelling').appendChild(persistentInput);
+      if(!state.saved){
+        state.saved=true;
+        S.saveSessionData({id:'spell_'+Date.now(),app:'spelling',date:new Date().toISOString(),score:score,total:words.length,category:'list14',wrong:wrongWords.map(w=>({question:w.word,answer:w.word,given:''}))});
+      }
+      const ri=pct===1?S.icon('trophy',64,'#fbbf24'):pct>=0.8?S.icon('star',64,'#fbbf24'):pct>=0.6?S.icon('sparkles',64,'#fbbf24'):S.icon('heart',64,'#f472b6');
+      appEl.innerHTML=
+        '<div class="fadeUp" style="text-align:center;max-width:500px;width:100%">'+
+          '<div style="margin-bottom:12px">'+ri+'</div>'+
+          '<h2 style="font-family:\'Fredoka One\',cursive;font-size:38px;color:#fff;margin:0 0 6px;text-shadow:0 2px 12px rgba(0,0,0,0.15)">'+(pct===1?'Perfect Score!':pct>=0.8?'Great Job!':pct>=0.6?'Nice Work!':'Keep Going!')+'</h2>'+
+          '<p style="color:rgba(255,255,255,0.9);font-size:22px;font-weight:800;margin-bottom:24px">'+score+' out of '+words.length+' correct</p>'+
+          (wrongWords.length>0?
+            '<div class="glass" style="border-radius:20px;padding:18px 22px;margin-bottom:28px;text-align:left">'+
+              '<p style="color:#fff;font-weight:800;font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px">'+S.icon('book',18,'#fff')+' Practice these words:</p>'+
+              wrongWords.map(w=>
+                '<div class="word-item">'+catBadge(w.cat)+
+                '<span style="color:#fff;font-weight:900;font-size:17px;flex:1">'+w.word+'</span>'+
+                '<button onclick="spellSpeak(\''+w.word+'\',false)" style="background:rgba(255,255,255,0.18);color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:14px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:4px">'+S.icon('volume',14,'#fff')+'</button></div>'
+              ).join('')+
+            '</div>':'')+
+          '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">'+
+            '<button onclick="spellStartQuiz()" class="btn-primary" style="--accent:#fff;color:#7c3aed;padding:16px 36px;font-size:18px;display:inline-flex;align-items:center;gap:8px">'+S.icon('refresh',18,'#7c3aed')+' Try Again</button>'+
+            '<button onclick="switchTab(\'home\')" class="btn-ghost" style="padding:16px 28px;font-size:18px;display:inline-flex;align-items:center;gap:8px">'+S.icon('home',18,'#fff')+' Home</button>'+
+          '</div>'+
+        '</div>';
+    }
+    updateTabBar();
+  }
+
+  return {render,startQuiz,submit,speak,getState:()=>state,setupInput};
+})();
+
+
+/* ══════════════════════════════════════════════
+   GLOBAL NAVIGATION
+   ══════════════════════════════════════════════ */
+let activeTab = 'home';
+
+function switchTab(tab){
+  if(tab===activeTab)return;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+tab).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  activeTab=tab;
+  if(tab==='home')renderHome();
+  else if(tab==='math')MathApp.render();
+  else if(tab==='spelling')SpellApp.render();
+  updateTabBar();
+}
+
+function updateTabBar(){
+  const inQuiz=(activeTab==='math'&&MathApp.getState().screen==='quiz')||
+               (activeTab==='spelling'&&SpellApp.getState().screen==='quiz');
+  document.getElementById('tab-bar').classList.toggle('hidden',inQuiz);
+}
+
+/* Global trampolines for onclick handlers */
+function mathStartQuiz(cat){MathApp.startQuiz(cat);updateTabBar()}
+function mathSubmit(){MathApp.submit()}
+function spellStartQuiz(){SpellApp.startQuiz();updateTabBar()}
+function spellSubmit(){SpellApp.submit()}
+function spellSpeak(w,s){SpellApp.speak(w,s)}
+
+
+/* ══════════════════════════════════════════════
+   HOME SCREEN
+   ══════════════════════════════════════════════ */
+function renderHome(){
+  const el=document.getElementById('home-content');
+
+  // Math stats
+  const mathLast=S.getLastSession('math');
+  const mathWeek=S.getWeekSessions('math');
+  let mathStatHTML='<span style="color:rgba(255,255,255,0.5);font-size:13px">No sessions yet</span>';
+  if(mathLast){
+    const pct=Math.round(mathLast.score/mathLast.total*100);
+    mathStatHTML='<div style="font-size:13px;color:rgba(255,255,255,0.85);font-weight:700">Last: '+mathLast.score+'/'+mathLast.total+' ('+pct+'%)</div>';
+    if(mathWeek.length>0){
+      const avg=Math.round(mathWeek.reduce((s,x)=>s+x.score/x.total,0)/mathWeek.length*100);
+      mathStatHTML+='<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px">This week: '+mathWeek.length+' session'+(mathWeek.length>1?'s':'')+', avg '+avg+'%</div>';
+    }
+  }
+
+  // Spelling stats
+  const spellLast=S.getLastSession('spelling');
+  const spellWeek=S.getWeekSessions('spelling');
+  let spellStatHTML='<span style="color:rgba(255,255,255,0.5);font-size:13px">No sessions yet</span>';
+  if(spellLast){
+    const pct=Math.round(spellLast.score/spellLast.total*100);
+    spellStatHTML='<div style="font-size:13px;color:rgba(255,255,255,0.85);font-weight:700">Last: '+spellLast.score+'/'+spellLast.total+' ('+pct+'%)</div>';
+    if(spellWeek.length>0){
+      const avg=Math.round(spellWeek.reduce((s,x)=>s+x.score/x.total,0)/spellWeek.length*100);
+      spellStatHTML+='<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px">This week: '+spellWeek.length+' session'+(spellWeek.length>1?'s':'')+', avg '+avg+'%</div>';
+    }
+  }
+
+  el.innerHTML=
+    '<div class="fadeUp">'+
+      '<h1 style="font-family:\'Fredoka One\',cursive;font-size:42px;color:#fff;margin:0 0 4px;text-shadow:0 2px 16px rgba(0,0,0,0.2)">Hey Charles!</h1>'+
+      '<p style="color:rgba(255,255,255,0.75);font-size:16px;font-weight:700;margin-bottom:24px;font-family:\'Inter\',sans-serif">What do you want to practice?</p>'+
+
+      '<!-- Stat Cards -->'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">'+
+        '<div class="stat-card">'+
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+            '<div style="width:28px;height:28px;border-radius:8px;background:#10b981;display:flex;align-items:center;justify-content:center;font-size:14px">'+S.icon('calculator',14,'#fff')+'</div>'+
+            '<span style="color:#fff;font-weight:800;font-size:14px">Math</span>'+
+          '</div>'+
+          mathStatHTML+
+        '</div>'+
+        '<div class="stat-card">'+
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+            '<div style="width:28px;height:28px;border-radius:8px;background:#8b5cf6;display:flex;align-items:center;justify-content:center;font-size:14px">'+S.icon('pencil',14,'#fff')+'</div>'+
+            '<span style="color:#fff;font-weight:800;font-size:14px">Spelling</span>'+
+          '</div>'+
+          spellStatHTML+
+        '</div>'+
+      '</div>'+
+
+      '<!-- App Cards -->'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">'+
+        '<div class="app-card" onclick="switchTab(\'math\')">'+
+          '<div style="font-size:40px;margin-bottom:8px">'+S.icon('calculator',40,'#fff')+'</div>'+
+          '<div style="font-family:\'Fredoka One\',cursive;font-size:20px;color:#fff;margin-bottom:4px">Math Quiz</div>'+
+          '<div style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:600">\u00d7 \u00f7 \u00bd \u2248</div>'+
+        '</div>'+
+        '<div class="app-card" onclick="switchTab(\'spelling\')">'+
+          '<div style="font-size:40px;margin-bottom:8px">'+S.icon('pencil',40,'#fff')+'</div>'+
+          '<div style="font-family:\'Fredoka One\',cursive;font-size:20px;color:#fff;margin-bottom:4px">Spelling</div>'+
+          '<div style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:600">List 14 \u2022 19 words</div>'+
+        '</div>'+
+      '</div>'+
+
+      '<!-- Gin Card -->'+
+      '<a href="/gin/" style="text-decoration:none;display:block">'+
+        '<div class="app-card" style="display:flex;align-items:center;gap:14px;text-align:left;padding:16px 20px">'+
+          '<div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:22px">'+S.icon('star',22,'#fbbf24')+'</div>'+
+          '<div>'+
+            '<div style="font-family:\'Fredoka One\',cursive;font-size:16px;color:#fff">Gin Rummy</div>'+
+            '<div style="color:rgba(255,255,255,0.55);font-size:12px;font-weight:600">Score tracker</div>'+
+          '</div>'+
+        '</div>'+
+      '</a>'+
+    '</div>';
+}
+
+
+/* ══════════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════════ */
+SpellApp.setupInput();
+renderHome();
+
+/* Visual viewport handling */
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',()=>{
+    const screen=document.getElementById('screen-'+activeTab);
+    if((activeTab==='math'&&MathApp.getState().screen==='quiz')||
+       (activeTab==='spelling'&&SpellApp.getState().screen==='quiz')){
+      screen.style.height=window.visualViewport.height+'px';
+      window.scrollTo(0,0);
     }
   });
-}catch(e){}
+  window.visualViewport.addEventListener('scroll',()=>{
+    if((activeTab==='math'&&MathApp.getState().screen==='quiz')||
+       (activeTab==='spelling'&&SpellApp.getState().screen==='quiz')){
+      window.scrollTo(0,0);
+    }
+  });
+}
 </script>
 </body>
 </html>
