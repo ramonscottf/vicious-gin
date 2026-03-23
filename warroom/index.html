@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKIPPY WAR ROOM — Hires Investigation</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☢</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#06060b;color:#c8ccd0;font-family:'JetBrains Mono','Fira Code','Courier New',monospace;font-size:12px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes scanline{0%{top:-100%}100%{top:100%}}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#06060b}
+::-webkit-scrollbar-thumb{background:#1a1a2e;border-radius:3px}
+::selection{background:#ff174444;color:#fff}
+a{color:#29b6f6;text-decoration:none}
+a:hover{opacity:.8}
+input:focus,textarea:focus,select:focus{border-color:#ff1744!important;outline:none}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+const STORAGE_PREFIX = "skippy-warroom-";
+const VERSION = "1.0.0";
+
+// LocalStorage persistence (works everywhere, no special API needed)
+const storage = {
+  get: (key) => {
+    try {
+      const val = localStorage.getItem(STORAGE_PREFIX + key);
+      return val ? JSON.parse(val) : null;
+    } catch { return null; }
+  },
+  set: (key, val) => {
+    try {
+      localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(val));
+      return true;
+    } catch { return false; }
+  },
+  clear: () => {
+    Object.keys(localStorage).filter(k => k.startsWith(STORAGE_PREFIX)).forEach(k => localStorage.removeItem(k));
+  }
+};
+
+const DEFAULT_DATA = {
+  entities: [
+    { id: "e1", name: "Shirley Hale Operations, LLC", type: "LLC", state: "Utah", role: "Operating Entity — Ali's Earn-In sits here", status: "active", notes: "Mark R. Hale & Jon M. Hale listed as Managers. Ali has 2% vesting earn-in effective 1/1/2026." },
+    { id: "e2", name: "Hires Enterprises Inc.", type: "Corporation", state: "Utah", role: "Verizon account holder — possibly older holding co", status: "unknown", notes: "Verizon biz account #0470505636-00001. Need to verify state registration and relationship to LLC." },
+    { id: "e3", name: "Hires Intermountain Drive Ins Inc.", type: "Corporation", state: "Utah", role: "Legacy entity — appears in biz databases", status: "unknown", notes: "Shows in ZoomInfo records. May be dissolved or inactive. Need state search to confirm." },
+    { id: "e4", name: "Hires Big H (DBA)", type: "DBA/Trade Name", state: "Utah", role: "Consumer-facing restaurant brand", status: "active", notes: "The restaurant brand. 3 locations: SLC (700 E), Midvale (Fort Union), West Valley City. Plus Downtown Daybreak." },
+  ],
+  persons: [
+    { id: "p1", name: "Mark R. Hale", role: "Manager/Co-Owner", status: "absentee", notes: "Ali's dad. Don Hale's son. Just returned from Mormon mission. Recently divorced. 'Acting like an 18 year old.' Co-owner with brother Jon. Signed earn-in as Manager of Shirley Hale Operations, LLC." },
+    { id: "p2", name: "Jon M. Hale", role: "Manager/Co-Owner", status: "absentee", notes: "Mark's brother. Don Hale's son. On Mormon mission. Co-owner. Signed earn-in as Manager. Did Small Lake City Podcast episode about Hires — mentioned 'Allie stepping up to carry the torch.'" },
+    { id: "p3", name: "Christian [LAST NAME TBD]", role: "General Manager", status: "suspect", notes: "Started as dishwasher. Promoted by Mark. BLOCKING Ali's financial access at every turn. Drives 2022 F-250 Tremor (~$70K+) for 2-3 catering jobs/year. Just bought NEW Tesla (~$40K). Both company-paid, titled in HIS name 'for mileage.' Responsible for commissary permitting failure → $500K loss + 8-month shutdown. Sucks up to Mark & Jon, ices Ali out. Classic gatekeeper behavior." },
+    { id: "p4", name: "Alexandra 'Ali' Foster", role: "New Member (2% vesting) / Company Lawyer & Financial Agent", status: "ally", notes: "JD, lawyer. Ex-Goldman Sachs VP. Brought in to fix things after years of mismanagement. Earn-in agreement Jan 1, 2026. At-will employee with for-cause clawback risk ($1 redemption). Phone: 801-205-6642. HAS ACCESS to Zions Bank accounts and SpotOn POS as company financial agent." },
+    { id: "p5", name: "Pattie [LAST NAME TBD]", role: "Possibly registered agent / admin / attorney", status: "unknown", notes: "Ali mentioned Pattie may have been sent the earn-in agreement to register with the state. Need to identify full name and role." },
+    { id: "p6", name: "Family Accountants [FIRM TBD]", role: "External CPA/Accountants", status: "suspect", notes: "Old family friends of grandfather Don Hale. Do NOT specialize in restaurants. Actively beg not to do work — too small-time for them. Rubber stamps. Providing zero real financial oversight. Need to identify the firm." },
+    { id: "p7", name: "Don Hale (Deceased)", role: "Founder", status: "deceased", notes: "Founded Hires Drive-In 1959 with wife Shirley Hickman. Former grocer. Died Jan 29, 2011 at age 93. Created the fry sauce. Built the whole business." },
+    { id: "p8", name: "Shirley Hickman Hale", role: "Co-Founder / LLC Namesake", status: "unknown", notes: "Don Hale's wife. LLC named 'Shirley Hale Operations' after her. Status unknown — need to determine if living and if she has any ownership stake." },
+  ],
+  redFlags: [
+    { id: "r1", category: "vehicles", title: "Company Vehicles Titled in GM's Personal Name", severity: "critical", detail: "2022 F-250 Tremor (~$70K+ new) used for only 2-3 catering jobs per year. Brand new Tesla (~$40K). BOTH reportedly paid for by Hires but titled to Christian personally 'so we can get miles.' If company is making payments/buying vehicles but title is in Christian's name, that is textbook conversion/theft. The F-250 is a personal lifestyle truck, not a business necessity for a burger restaurant doing 2-3 catering jobs annually.", evidence: "Ali's direct statements to Scott. Need: Zions bank statements showing vehicle payments, Utah DMV title records.", actionable: true },
+    { id: "r2", category: "operations", title: "$500K Commissary Permitting Failure", severity: "critical", detail: "Christian was responsible for permitting the new commissary. Failed to get proper permits. Result: facility shut down for 8 MONTHS. Estimated losses ~$500K (lost revenue + sunk construction costs + penalties). Despite this catastrophic failure, Christian faced ZERO consequences — not terminated, not demoted, no pay reduction. In any functioning business, this would be a fireable offense.", evidence: "Ali's statements. Need: building permit records (SLC/county), contractor invoices, health dept records, insurance claims if any.", actionable: true },
+    { id: "r3", category: "financial", title: "Persistent Monthly Losses — No Explanation", severity: "critical", detail: "Business has lost money every month for approximately TWO YEARS. Nobody — not Christian, not the accountants — can explain where the money goes or make the numbers reconcile. An iconic burger chain with 3+ locations, massive brand recognition, and loyal customer base should NOT be losing money every month for 2 years straight. This screams either systematic theft, gross mismanagement, or both.", evidence: "Ali's statements. Need: 24 months P&L, bank statements, POS daily sales reports, food cost reports.", actionable: true },
+    { id: "r4", category: "access", title: "GM Actively Blocking Owner/Member Financial Access", severity: "critical", detail: "Christian actively blocks Ali — who is both a legal LLC member AND the designated company lawyer and financial agent — from accessing financial records, bank accounts, and business systems. The ONLY reason a GM blocks the person in charge of finances from seeing the finances is because the finances would show something he doesn't want seen.", evidence: "Ali's statements, text message screenshots showing Verizon account access blocked. Need: documented instances of access denial.", actionable: true },
+    { id: "r5", category: "governance", title: "Captured/Incompetent Accountants", severity: "high", detail: "The external accountants are old family friends of grandfather Don Hale (deceased 2011). They do NOT specialize in restaurant accounting. They actively beg not to do the work — Hires is too small-time for them. They are providing zero meaningful oversight, no fraud detection, no internal controls. They are rubber-stamping whatever Christian gives them.", evidence: "Ali's statements. Need: identify the accounting firm, review their work product, determine if they're even performing basic reconciliations.", actionable: true },
+    { id: "r6", category: "governance", title: "Completely Absentee Owners", severity: "high", detail: "Both Mark and Jon Hale are effectively absent. Jon is on a Mormon mission (out of country/unavailable). Mark just returned from his own mission, got divorced, and is 'acting like an 18-year-old.' Neither exercises any oversight over Christian or the business finances. They are shallow, ego-driven men who resent Ali for calling them out. They may actively side with Christian over their own family member because confrontation is uncomfortable.", evidence: "Ali and Scott's direct observations. Pattern confirmed by business performance.", actionable: false },
+  ],
+  checklist: [
+    { id: "c1", phase: "phase1", task: "Pull Utah state registration for Shirley Hale Operations, LLC", done: false, notes: "businessregistration.utah.gov" },
+    { id: "c2", phase: "phase1", task: "Pull Utah state registration for Hires Enterprises Inc.", done: false, notes: "" },
+    { id: "c3", phase: "phase1", task: "Pull Utah state registration for Hires Intermountain Drive Ins Inc.", done: false, notes: "" },
+    { id: "c4", phase: "phase1", task: "Search all DBAs registered under Hale family names", done: false, notes: "Use executive name search" },
+    { id: "c5", phase: "phase1", task: "Get copy of Operating Agreement for Shirley Hale Operations, LLC", done: false, notes: "Ali should have signed this per Earn-In §2.1" },
+    { id: "c6", phase: "phase1", task: "Verify earn-in agreement was filed with state (ask Pattie)", done: false, notes: "" },
+    { id: "c7", phase: "phase1", task: "Get Christian's full legal name", done: false, notes: "Need for DMV, court, and background searches" },
+    { id: "c8", phase: "phase1", task: "Identify the accounting firm (name, partners)", done: false, notes: "" },
+    { id: "c9", phase: "phase2", task: "Utah DMV title search — 2022 F-250 Tremor", done: false, notes: "Need VIN or Christian's full name" },
+    { id: "c10", phase: "phase2", task: "Utah DMV title search — Tesla (new)", done: false, notes: "" },
+    { id: "c11", phase: "phase2", task: "Pull building permits for commissary project", done: false, notes: "Check SLC and relevant county" },
+    { id: "c12", phase: "phase2", task: "Pull health dept inspection records — all Hires locations", done: false, notes: "" },
+    { id: "c13", phase: "phase2", task: "Search Utah court records for litigation involving all entities", done: false, notes: "utcourts.gov/xchange" },
+    { id: "c14", phase: "phase2", task: "Search UCC filings and liens against all entities", done: false, notes: "" },
+    { id: "c15", phase: "phase2", task: "Run Christian through Utah court records (civil + criminal)", done: false, notes: "Need full legal name" },
+    { id: "c16", phase: "phase2", task: "Check Utah unclaimed property for all entity names", done: false, notes: "mycash.utah.gov" },
+    { id: "c17", phase: "phase3", task: "ZIONS BANK: Download 24 months statements — ALL accounts", done: false, notes: "Ali has access as financial agent. CSV + PDF." },
+    { id: "c18", phase: "phase3", task: "SPOTON POS: Export daily sales summaries — 24 months, all locations", done: false, notes: "Dashboard → Reports → Sales Summary → Export" },
+    { id: "c19", phase: "phase3", task: "SPOTON POS: Export void/comp/discount reports — 24 months", done: false, notes: "Dashboard → Reports → Voids & Comps" },
+    { id: "c20", phase: "phase3", task: "SPOTON POS: Export employee shift reports + labor reports", done: false, notes: "Dashboard → Reports → Labor" },
+    { id: "c21", phase: "phase3", task: "SPOTON POS: Export refund reports — 24 months", done: false, notes: "" },
+    { id: "c22", phase: "phase3", task: "Obtain payroll records — all employees, 24 months", done: false, notes: "Which payroll provider? ADP? Gusto? In-house?" },
+    { id: "c23", phase: "phase3", task: "Obtain credit/debit card statements — all company cards, 24 months", done: false, notes: "May be Zions debit cards or separate credit cards" },
+    { id: "c24", phase: "phase3", task: "Obtain vendor payment records / AP ledger — 24 months", done: false, notes: "From accountants or bookkeeping system" },
+    { id: "c25", phase: "phase3", task: "Obtain tax filings — last 3 years, ALL entities", done: false, notes: "From accountants — 1065 (LLC), 1120 (Corp), state returns" },
+    { id: "c26", phase: "phase3", task: "Obtain insurance policies — all types, all entities", done: false, notes: "Verify vehicles are properly insured under correct entity" },
+    { id: "c27", phase: "phase4", task: "CASH SKIM TEST: Compare SpotOn daily cash sales to Zions daily deposits", done: false, notes: "Gap = cash leaving the building. This is test #1." },
+    { id: "c28", phase: "phase4", task: "TOTAL REVENUE TEST: Compare SpotOn total sales to total bank deposits", done: false, notes: "Should be ~equal less credit card processing fees" },
+    { id: "c29", phase: "phase4", task: "FOOD COST ANALYSIS: Calculate COGS as % of revenue", done: false, notes: "Industry norm for burger/casual: 28-35%. Over 40% = theft or severe waste." },
+    { id: "c30", phase: "phase4", task: "LABOR COST ANALYSIS: Calculate total payroll as % of revenue", done: false, notes: "Industry norm: 25-35%. Over 40% = ghost employees or inflated pay." },
+    { id: "c31", phase: "phase4", task: "GHOST EMPLOYEE AUDIT: Cross-reference payroll names to actual staff", done: false, notes: "Ask Ali and trusted staff to verify every name on payroll." },
+    { id: "c32", phase: "phase4", task: "VENDOR AUDIT: List all vendors, identify any single-source or Christian-only vendors", done: false, notes: "Kickback vendors are always single-source and only go through one person." },
+    { id: "c33", phase: "phase4", task: "VEHICLE PAYMENT TRACE: Find all payments to auto dealers/lenders in bank statements", done: false, notes: "Match to vehicles titled in Christian's name. Conversion." },
+    { id: "c34", phase: "phase4", task: "PERSONAL EXPENSE AUDIT: Flag all non-restaurant charges on company accounts", done: false, notes: "Amazon, retail, personal subscriptions, travel, etc." },
+    { id: "c35", phase: "phase4", task: "VOID/COMP PATTERN ANALYSIS: Look for unusual patterns", done: false, notes: "High voids near close = skimming. Excessive comps = giving away product." },
+    { id: "c36", phase: "phase4", task: "Compile findings into forensic report with documentation", done: false, notes: "" },
+  ],
+  dataExtractionGuide: {
+    zions: {
+      title: "ZIONS BANK — Data Extraction Playbook",
+      steps: [
+        "Ali logs into Zions Bank Online Banking (zionsbank.com) with her credentials as company financial agent",
+        "Go to ACCOUNTS → select each business checking/savings account one at a time",
+        "For EACH account: go to Statements & Documents → download ALL monthly statements for last 24 months as PDF",
+        "For EACH account: go to Transaction History → set date range to full 24 months → EXPORT as CSV",
+        "CRITICAL: Identify ALL accounts — there may be operating accounts, payroll accounts, tax accounts, credit card accounts",
+        "Download any outstanding loan/line of credit statements",
+        "Check for any linked accounts, authorized signers list, and recent account changes",
+        "Look for any NEW accounts opened in last 2 years that Ali didn't know about",
+        "Save everything in a folder structure: /ZionsBank/[AccountName]/statements/ and /ZionsBank/[AccountName]/transactions/",
+        "Check online bill pay history — see what recurring payments are set up and to whom"
+      ]
+    },
+    spoton: {
+      title: "SPOTON POS — Data Extraction Playbook",
+      steps: [
+        "Ali logs into SpotOn Dashboard (dashboard.spoton.com or spoton.com/login)",
+        "Navigate to REPORTS section in the main menu",
+        "SALES SUMMARY: Reports → Sales → Sales Summary → Set date range (24 months) → run for EACH location separately → Export CSV",
+        "DAILY SALES: Reports → Sales → Daily Sales → Same date range → Export CSV (this gives you the daily totals to match against bank deposits)",
+        "PAYMENT BREAKDOWN: Reports → Payments → shows cash vs credit vs gift card breakdown (CRITICAL for cash skim test)",
+        "VOIDS & COMPS: Reports → Voids/Comps → full 24 months → Export CSV (look for patterns — who's voiding, when, how much)",
+        "REFUNDS: Reports → Refunds → full 24 months → Export CSV",
+        "LABOR/EMPLOYEE: Reports → Labor → Employee shifts, hours, overtime → Export CSV",
+        "DISCOUNTS: Reports → Discounts → which discounts, how often, who applies them → Export CSV",
+        "PRODUCT MIX: Reports → Product Mix → shows what's selling and at what prices (helps calculate expected food cost)",
+        "If SpotOn has an EMPLOYEE LIST or USER MANAGEMENT section — screenshot all users with their permission levels",
+        "Check if Christian has ADMIN access and what changes he's made to the system",
+        "Save everything: /SpotOn/[LocationName]/[ReportType]/"
+      ]
+    }
+  },
+  timeline: [
+    { id: "t1", date: "1959", event: "Don Hale founds Hires Drive-In with wife Shirley Hickman in Salt Lake City", source: "Wikipedia / Public records" },
+    { id: "t2", date: "1965", event: "Don Hale establishes Litza's Pizza as companion restaurant", source: "WVC Journal article" },
+    { id: "t3", date: "1987", event: "West Valley City Hires location opens", source: "WVC Journal article" },
+    { id: "t4", date: "2011-01-29", event: "Don Hale dies at age 93. Mark and Jon Hale inherit and run the business.", source: "Salt Lake Tribune obituary / Wikipedia" },
+    { id: "t5", date: "~2020", event: "West Valley City location closes for COVID + renovation", source: "WVC Journal" },
+    { id: "t6", date: "~2023-05", event: "West Valley City location reopens with renovations", source: "WVC Journal" },
+    { id: "t7", date: "~2024", event: "Mark Hale goes on Mormon mission. Jon Hale on mission. Christian left running operations unsupervised.", source: "Scott/Ali" },
+    { id: "t8", date: "~2024-2025", event: "Commissary permitting disaster. Christian fails to get permits. 8-month shutdown. ~$500K in losses.", source: "Scott/Ali" },
+    { id: "t9", date: "~2024-2025", event: "Business begins losing money every month. Losses continue for ~2 years. Nobody can explain.", source: "Scott/Ali" },
+    { id: "t10", date: "~2025", event: "Christian acquires 2022 F-250 Tremor and new Tesla, both on company money, titled in his name", source: "Scott/Ali" },
+    { id: "t11", date: "~2025", event: "Ali brought in part-time to help fix the business", source: "Scott/Ali" },
+    { id: "t12", date: "~2025-H2", event: "Mark returns from mission. Gets divorced. Described as 'acting like an 18-year-old.'", source: "Scott/Ali" },
+    { id: "t13", date: "2024-08", event: "Jon Hale appears on Small Lake City Podcast, mentions 'Allie stepping up to carry the torch'", source: "Small Lake City Podcast S1E47" },
+    { id: "t14", date: "2026-01-01", event: "EARN-IN AGREEMENT SIGNED. Ali gets 2% of Shirley Hale Operations, LLC. Signed by Mark, Jon, and Ali. Vesting over 4 additional years.", source: "Document — Foster_Earn-In_Agreement_1_7_2026_0001.pdf" },
+    { id: "t15", date: "2026-01-07", event: "Earn-In Agreement document dated/scanned. PDF created.", source: "Document filename date" },
+    { id: "t16", date: "2026-03", event: "Christian still blocking Ali's access to financials. Verizon biz account access denied. Text messages document blocking behavior.", source: "Scott/Ali — IMG_2215.jpeg text screenshots" },
+    { id: "t17", date: "2026-03", event: "Scott initiates investigation planning. Skippy War Room created.", source: "This conversation" },
+  ],
+  notes: `MASTER THEORY
+=============
+Christian has built himself an unaccountable fiefdom inside Hires Big H. With both owners absent for extended periods (Mormon missions), he had years of unsupervised access to all finances, operations, and business systems. He controls all financial access and actively blocks the one person (Ali) who has both the legal standing and professional competence to audit him.
+
+The pattern is textbook embezzlement/self-dealing:
+- Vehicles purchased with company funds but titled personally ($110K+ combined)
+- Catastrophic operational failure ($500K commissary disaster) with zero accountability
+- Persistent unexplained monthly losses for 2 years
+- Active blocking of financial oversight
+- Captured/incompetent external accountants providing no real controls
+- Absentee owners who are checked out and resent being questioned
+
+WHAT ALI HAS:
+- Legal standing as 2% LLC member
+- Role as company lawyer and financial agent
+- Access to Zions Bank accounts
+- Access to SpotOn POS system backend
+- Statutory inspection rights under Utah Code §48-3a-410
+
+WHAT WE NEED:
+- 24 months of bank statements (Zions) — ALL accounts
+- 24 months of POS data (SpotOn) — daily sales, cash vs. credit, voids, comps, refunds, labor
+- Payroll records — need to identify the payroll provider
+- Vehicle purchase/payment documentation
+- Commissary permitting documents and contractor invoices
+- Christian's full legal name for DMV/court/background searches
+- The accounting firm's name
+- The Operating Agreement of Shirley Hale Operations, LLC
+
+THE PLAY:
+Ali quietly pulls all bank and POS data using her existing access. No confrontation. No tipping off Christian. We build the forensic analysis, match POS sales to bank deposits, trace vehicle payments, audit vendors, check for ghost employees. Let the numbers tell the story. When the evidence is compiled, Ali presents it to Mark and Jon with the forensic report. If they refuse to act, she has legal options under the Operating Agreement and Utah LLC Act.
+
+RISK:
+The earn-in agreement has a for-cause clawback clause — they can redeem all her interests for $1 if she violates company rules or is terminated for cause. She needs to be careful not to give them ammunition. Everything she does should be within her stated role as company lawyer and financial agent. Pulling bank statements and POS reports IS her job.
+
+KEY QUESTION:
+What is the relationship between Shirley Hale Operations, LLC and Hires Enterprises Inc.? Which entity holds which bank accounts? Which entity runs payroll? Which entity is on the SpotOn system? The corporate structure may be hiding things.`
+};
+
+const SNOOPING_TOOLS = [
+  { category: "Utah State Records", links: [
+    { name: "Utah Business Entity Search", url: "https://businessregistration.utah.gov/EntitySearch/OnlineEntitySearch", desc: "Search all LLCs, Corps, DBAs registered in Utah" },
+    { name: "Utah Executive Name Search", url: "https://corporations.utah.gov/searches/", desc: "Find all businesses associated with a person's name" },
+    { name: "Utah UCC/Lien Search", url: "https://corporations.utah.gov/searches/", desc: "Search UCC filings and liens against businesses" },
+    { name: "Utah Court Records (XChange)", url: "https://www.utcourts.gov/xchange/", desc: "Search civil, criminal, and appellate court records" },
+    { name: "Utah Unclaimed Property", url: "https://mycash.utah.gov/", desc: "Search for unclaimed funds under entity/person names" },
+  ]},
+  { category: "Property & Vehicles", links: [
+    { name: "Salt Lake County Assessor/Recorder", url: "https://slco.org/assessor/new/valuationsearch.cfm", desc: "Property ownership, values, tax records in SL County" },
+    { name: "Salt Lake County Recorder", url: "https://slco.org/recorder/", desc: "Deeds, liens, mortgages in SL County" },
+    { name: "Utah DMV", url: "https://dmv.utah.gov/", desc: "Vehicle title verification (may need VIN or visit in person)" },
+    { name: "NHTSA VIN Decoder", url: "https://www.nhtsa.gov/vin-decoder", desc: "Decode VIN for vehicle year/make/model" },
+    { name: "VINCheck (NICB)", url: "https://www.nicb.org/vincheck", desc: "Free VIN check for theft/salvage/flood" },
+  ]},
+  { category: "Business Intelligence", links: [
+    { name: "Utah Food Establishment Inspections", url: "https://health.utah.gov/", desc: "Restaurant health inspection reports" },
+    { name: "SLC Building Permits", url: "https://www.slc.gov/buildingservices/", desc: "Building permit applications and records" },
+    { name: "Midvale City Building", url: "https://www.midvalecity.org/", desc: "Midvale building permits (commissary may be here)" },
+    { name: "Utah DOPL License Lookup", url: "https://dopl.utah.gov/license-lookup/", desc: "Professional and business license verification" },
+    { name: "Utah State Tax Commission", url: "https://tax.utah.gov/", desc: "Business tax registration and compliance" },
+  ]},
+  { category: "People & Background", links: [
+    { name: "LinkedIn", url: "https://www.linkedin.com/", desc: "Check Christian's profile — undisclosed businesses or side gigs?" },
+    { name: "OpenCorporates", url: "https://opencorporates.com/", desc: "Global corporate registry — search people as officers/agents" },
+    { name: "Utah Voter Registration", url: "https://votesearch.utah.gov/voter-search/search/search-by-voter/voter-info", desc: "Verify addresses" },
+    { name: "PACER (Federal Courts)", url: "https://pacer.uscourts.gov/", desc: "Federal court filings — bankruptcy, civil, criminal" },
+    { name: "SEC EDGAR", url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany", desc: "Federal securities filings if any" },
+  ]},
+  { category: "Financial & Tax", links: [
+    { name: "FDIC BankFind Suite", url: "https://www.fdic.gov/bankfind", desc: "Verify Zions Bank branch and institution details" },
+    { name: "IRS EIN Lookup (Tax Exempt)", url: "https://apps.irs.gov/app/eos/", desc: "Check if any entities have tax-exempt status" },
+    { name: "IRS Where's My Refund (Business)", url: "https://www.irs.gov/businesses", desc: "Business tax resources" },
+    { name: "NRA Restaurant Benchmarks", url: "https://restaurant.org/research-and-media/research/research-reports/", desc: "National Restaurant Association industry data" },
+    { name: "BBB Business Profile", url: "https://www.bbb.org/", desc: "Better Business Bureau complaints and ratings" },
+    { name: "Zions Bank Online Banking", url: "https://www.zionsbank.com/", desc: "Ali's bank access — data extraction target" },
+    { name: "SpotOn Dashboard", url: "https://dashboard.spoton.com/", desc: "Ali's POS access — data extraction target" },
+  ]},
+];
+
+const PHASE_LABELS = {
+  phase1: "PHASE 1 — Entity Mapping & Documents",
+  phase2: "PHASE 2 — Public Records Recon",
+  phase3: "PHASE 3 — Data Extraction (Zions + SpotOn)",
+  phase4: "PHASE 4 — Forensic Analysis",
+};
+
+const SEVERITY_COLORS = { critical: "#ff1744", high: "#ff6d00", medium: "#ffd600", low: "#69f0ae" };
+const STATUS_COLORS = { absentee: "#78909c", suspect: "#ff1744", ally: "#00e676", unknown: "#ffd600", active: "#00e676", deceased: "#546e7a" };
+
+function App() {
+  const [data, setData] = useState(null);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(null);
+  const [newItem, setNewItem] = useState({});
+
+  useEffect(() => {
+    const saved = storage.get("data");
+    setData(saved || DEFAULT_DATA);
+    if (!saved) storage.set("data", DEFAULT_DATA);
+    setLoading(false);
+  }, []);
+
+  const save = (d) => { setData(d); storage.set("data", d); };
+  const toggleCheck = (id) => save({...data, checklist: data.checklist.map(c => c.id===id ? {...c, done:!c.done} : c)});
+
+  const addRedFlag = () => {
+    if (!newItem.title) return;
+    save({...data, redFlags: [...data.redFlags, { id:"r"+Date.now(), category:newItem.category||"financial", title:newItem.title, severity:newItem.severity||"high", detail:newItem.detail||"", evidence:newItem.evidence||"", date:newItem.date||new Date().toISOString().slice(0,7) }]});
+    setNewItem({}); setShowAddForm(null);
+  };
+
+  const addTimelineEvent = () => {
+    if (!newItem.event) return;
+    save({...data, timeline: [...data.timeline, { id:"t"+Date.now(), date:newItem.date||"", event:newItem.event, source:newItem.source||"" }]});
+    setNewItem({}); setShowAddForm(null);
+  };
+
+  const resetData = () => { if (confirm("Reset ALL data to defaults?")) { storage.clear(); save(DEFAULT_DATA); } };
+
+  if (loading || !data) return (
+    <div style={{background:"#06060b",color:"#00ff41",height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'JetBrains Mono',monospace"}}>
+      <div style={{textAlign:"center"}}><div style={{fontSize:48,marginBottom:16}}>&#9763;</div><div style={{fontSize:14,letterSpacing:4}}>INITIALIZING WAR ROOM...</div></div>
+    </div>
+  );
+
+  const completedTasks = data.checklist.filter(c=>c.done).length;
+  const totalTasks = data.checklist.length;
+  const criticalFlags = data.redFlags.filter(r=>r.severity==="critical").length;
+  const highFlags = data.redFlags.filter(r=>r.severity==="high").length;
+
+  const tabs = [
+    {id:"dashboard",label:"SITREP",icon:"◉"},
+    {id:"entities",label:"ENTITIES",icon:"⬡"},
+    {id:"persons",label:"PERSONS",icon:"◎"},
+    {id:"redflags",label:"RED FLAGS",icon:"⚑"},
+    {id:"checklist",label:"OPS CHECKLIST",icon:"☐"},
+    {id:"extraction",label:"DATA EXTRACTION",icon:"⇓"},
+    {id:"timeline",label:"TIMELINE",icon:"│"},
+    {id:"tools",label:"RECON TOOLS",icon:"⌕"},
+    {id:"notes",label:"INTEL NOTES",icon:"✎"},
+  ];
+
+  const S = {
+    header:{background:"linear-gradient(180deg,#0d0d14 0%,#06060b 100%)",borderBottom:"1px solid #1a1a2e",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100},
+    tabBar:{display:"flex",gap:0,borderBottom:"1px solid #1a1a2e",background:"#08080e",overflowX:"auto",whiteSpace:"nowrap"},
+    tab:(a)=>({padding:"10px 14px",cursor:"pointer",fontSize:10,letterSpacing:1.5,color:a?"#ff1744":"#546e7a",borderBottom:a?"2px solid #ff1744":"2px solid transparent",background:a?"#0d0d14":"transparent",transition:"all .2s",display:"flex",alignItems:"center",gap:5,flexShrink:0}),
+    content:{padding:"20px 24px",maxWidth:1200,margin:"0 auto"},
+    card:{background:"#0c0c14",border:"1px solid #1a1a2e",borderRadius:4,padding:16,marginBottom:12},
+    cardTitle:{fontSize:11,fontWeight:700,letterSpacing:2,color:"#ff1744",marginBottom:12,textTransform:"uppercase"},
+    badge:(c)=>({display:"inline-block",padding:"2px 8px",borderRadius:2,fontSize:9,fontWeight:700,letterSpacing:1,background:c+"22",color:c,border:"1px solid "+c+"44",textTransform:"uppercase"}),
+    statBox:{background:"#0c0c14",border:"1px solid #1a1a2e",borderRadius:4,padding:16,textAlign:"center",flex:1,minWidth:120},
+    statNum:(c)=>({fontSize:32,fontWeight:800,color:c||"#00ff41",lineHeight:1}),
+    statLabel:{fontSize:9,color:"#546e7a",letterSpacing:2,marginTop:6,textTransform:"uppercase"},
+    input:{background:"#0a0a12",border:"1px solid #1a1a2e",color:"#c8ccd0",padding:"8px 10px",borderRadius:3,fontFamily:"inherit",fontSize:11,width:"100%",outline:"none",boxSizing:"border-box"},
+    textarea:{background:"#0a0a12",border:"1px solid #1a1a2e",color:"#c8ccd0",padding:10,borderRadius:3,fontFamily:"inherit",fontSize:11,width:"100%",minHeight:200,outline:"none",resize:"vertical",boxSizing:"border-box",lineHeight:1.6},
+    btn:(c)=>({background:c||"#ff1744",color:"#fff",border:"none",padding:"6px 14px",borderRadius:3,fontSize:10,fontWeight:700,letterSpacing:1,cursor:"pointer",fontFamily:"inherit",textTransform:"uppercase"}),
+    btnGhost:{background:"transparent",color:"#546e7a",border:"1px solid #1a1a2e",padding:"6px 14px",borderRadius:3,fontSize:10,fontWeight:700,letterSpacing:1,cursor:"pointer",fontFamily:"inherit",textTransform:"uppercase"},
+    link:{color:"#29b6f6",textDecoration:"none",fontSize:11},
+    pulse:{display:"inline-block",width:8,height:8,borderRadius:"50%",background:"#ff1744",animation:"pulse 2s infinite",marginRight:8},
+  };
+
+  const renderDashboard = () => (
+    <div>
+      <div style={{...S.card,borderColor:"#ff1744",background:"linear-gradient(135deg,#0c0c14 0%,#1a0a0e 100%)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+          <span style={S.pulse}/><span style={{fontSize:11,fontWeight:700,color:"#ff1744",letterSpacing:2}}>ACTIVE INVESTIGATION</span>
+        </div>
+        <div style={{fontSize:13,color:"#e0e0e0",lineHeight:1.7}}>
+          <strong>TARGET:</strong> Christian [Last Name TBD] — GM — Suspected embezzlement, expense fraud, self-dealing<br/>
+          <strong>ENTITY:</strong> Shirley Hale Operations, LLC / Hires Enterprises Inc. dba Hires Big H<br/>
+          <strong>PRINCIPAL:</strong> Alexandra Foster — 2% member, company lawyer & financial agent<br/>
+          <strong>BANK:</strong> Zions Bank — Ali has access as financial agent<br/>
+          <strong>POS:</strong> SpotOn — Ali has backend access<br/>
+          <strong>STATUS:</strong> <span style={{color:"#ffd600"}}>Data extraction phase. Ali pulling Zions + SpotOn records.</span>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+        <div style={S.statBox}><div style={S.statNum("#ff1744")}>{criticalFlags}</div><div style={S.statLabel}>Critical Flags</div></div>
+        <div style={S.statBox}><div style={S.statNum("#ff6d00")}>{highFlags}</div><div style={S.statLabel}>High Severity</div></div>
+        <div style={S.statBox}><div style={S.statNum("#00e676")}>{completedTasks}</div><div style={S.statLabel}>Tasks Done</div></div>
+        <div style={S.statBox}><div style={S.statNum("#29b6f6")}>{totalTasks-completedTasks}</div><div style={S.statLabel}>Remaining</div></div>
+        <div style={S.statBox}><div style={S.statNum("#ffd600")}>{data.timeline.length}</div><div style={S.statLabel}>Timeline Events</div></div>
+      </div>
+      <div style={S.card}>
+        <div style={S.cardTitle}>⚠ Threat Assessment</div>
+        <div style={{lineHeight:1.8,color:"#aaa"}}>
+          <div style={{marginBottom:8}}><span style={S.badge("#ff1744")}>FOR-CAUSE TRAP</span> <span style={{marginLeft:8}}>Earn-in §1.1(B): Termination for cause = $1 redemption of ALL interests. §1.1(D): Failure to follow company rules = same. Christian or Hales could weaponize this.</span></div>
+          <div style={{marginBottom:8}}><span style={S.badge("#ff6d00")}>INFORMATION ASYMMETRY</span> <span style={{marginLeft:8}}>Christian controls all operations. Ali has bank and POS access but hasn't pulled the data yet. Once she does, the numbers will tell the story.</span></div>
+          <div style={{marginBottom:8}}><span style={S.badge("#ffd600")}>FAMILY DYNAMICS</span> <span style={{marginLeft:8}}>Mark and Jon are checked out, ego-driven, and may side with Christian. Ali is a lawyer who calls them out — they resent her for it.</span></div>
+          <div style={{marginBottom:8}}><span style={S.badge("#29b6f6")}>ALI'S COVER</span> <span style={{marginLeft:8}}>She IS the company lawyer and financial agent. Pulling bank statements and POS reports IS her job. She doesn't need permission. She doesn't need to explain.</span></div>
+        </div>
+      </div>
+      <div style={S.card}>
+        <div style={S.cardTitle}>Key Legal Provisions</div>
+        <div style={{color:"#aaa",lineHeight:1.8,fontSize:11}}>
+          <div><strong style={{color:"#29b6f6"}}>Utah Code §48-3a-410</strong> — Member right to inspect/copy LLC records. Financial statements, tax returns, operating agreement, member list. Written demand → 10 business days → court enforcement.</div>
+          <div style={{marginTop:8}}><strong style={{color:"#29b6f6"}}>Earn-In §1.1(A)</strong> — 2% immediate + 2%/year for 4 years = 10% max (25,641.05 units). Contingent on full-time employment.</div>
+          <div style={{marginTop:8}}><strong style={{color:"#29b6f6"}}>Earn-In §1.1(B)</strong> — DANGER: Vesting contingent on employment as at-will employee. For-cause termination = $1 redemption of ALL vested interests.</div>
+          <div style={{marginTop:8}}><strong style={{color:"#29b6f6"}}>Earn-In §2.1</strong> — This agreement governs in lieu of amending Operating Agreement. Ali must sign OA before first units vest.</div>
+          <div style={{marginTop:8}}><strong style={{color:"#29b6f6"}}>Earn-In §4.7</strong> — Disputes: AAA mediation → binding arbitration within 45 days. Prevailing party gets attorney's fees + costs.</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderEntities = () => (
+    <div>
+      <div style={S.cardTitle}>Corporate Entity Map</div>
+      <div style={{...S.card,borderColor:"#29b6f6",borderStyle:"dashed",background:"#08080e",marginBottom:16}}>
+        <div style={{fontSize:11,color:"#29b6f6",marginBottom:8,fontWeight:700}}>⚡ KEY QUESTION</div>
+        <div style={{color:"#aaa",lineHeight:1.6}}>What is the relationship between these entities? Which one holds the bank accounts? Which runs payroll? Which is on the SpotOn system? Which one owns/leases the properties? The corporate structure may be hiding money flows.</div>
+      </div>
+      {data.entities.map(e => (
+        <div key={e.id} style={{...S.card,borderLeft:"3px solid "+(STATUS_COLORS[e.status]||"#546e7a")}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <span style={{fontSize:14,fontWeight:700,color:"#e0e0e0"}}>{e.name}</span>
+            <span style={S.badge(STATUS_COLORS[e.status]||"#546e7a")}>{e.status}</span>
+          </div>
+          <div style={{color:"#78909c",marginBottom:4}}><strong>Type:</strong> {e.type} | <strong>State:</strong> {e.state}</div>
+          <div style={{color:"#aaa",marginBottom:4}}><strong>Role:</strong> {e.role}</div>
+          <div style={{color:"#78909c",fontSize:11,marginTop:8,padding:"8px 10px",background:"#08080e",borderRadius:3,lineHeight:1.5}}>{e.notes}</div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderPersons = () => (
+    <div>
+      <div style={S.cardTitle}>Persons of Interest</div>
+      {data.persons.map(p => (
+        <div key={p.id} style={{...S.card,borderLeft:"3px solid "+(STATUS_COLORS[p.status]||"#546e7a")}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{fontSize:14,fontWeight:700,color:"#e0e0e0"}}>{p.name}</span>
+            <span style={S.badge(STATUS_COLORS[p.status])}>{p.status}</span>
+          </div>
+          <div style={{color:"#78909c",marginBottom:8}}>{p.role}</div>
+          <div style={{color:"#aaa",fontSize:11,padding:"8px 10px",background:"#08080e",borderRadius:3,lineHeight:1.6}}>{p.notes}</div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderRedFlags = () => (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div style={S.cardTitle}>Red Flags & Indicators</div>
+        <button style={S.btn()} onClick={()=>{setShowAddForm("redflag");setNewItem({});}}>+ ADD FLAG</button>
+      </div>
+      {showAddForm==="redflag"&&(
+        <div style={{...S.card,borderColor:"#ff1744"}}>
+          <input style={{...S.input,marginBottom:8}} placeholder="Flag title..." value={newItem.title||""} onChange={e=>setNewItem({...newItem,title:e.target.value})}/>
+          <div style={{display:"flex",gap:8,marginBottom:8}}>
+            <select style={{...S.input,flex:1}} value={newItem.severity||"high"} onChange={e=>setNewItem({...newItem,severity:e.target.value})}>
+              <option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+            </select>
+            <select style={{...S.input,flex:1}} value={newItem.category||"financial"} onChange={e=>setNewItem({...newItem,category:e.target.value})}>
+              <option value="financial">Financial</option><option value="vehicles">Vehicles</option><option value="operations">Operations</option><option value="access">Access</option><option value="governance">Governance</option>
+            </select>
+          </div>
+          <textarea style={{...S.textarea,minHeight:60,marginBottom:8}} placeholder="Details..." value={newItem.detail||""} onChange={e=>setNewItem({...newItem,detail:e.target.value})}/>
+          <input style={{...S.input,marginBottom:8}} placeholder="Evidence source..." value={newItem.evidence||""} onChange={e=>setNewItem({...newItem,evidence:e.target.value})}/>
+          <div style={{display:"flex",gap:8}}><button style={S.btn()} onClick={addRedFlag}>Save</button><button style={S.btnGhost} onClick={()=>setShowAddForm(null)}>Cancel</button></div>
+        </div>
+      )}
+      {data.redFlags.sort((a,b)=>{const o={critical:0,high:1,medium:2,low:3};return o[a.severity]-o[b.severity];}).map(r=>(
+        <div key={r.id} style={{...S.card,borderLeft:"3px solid "+SEVERITY_COLORS[r.severity]}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,flexWrap:"wrap",gap:6}}>
+            <span style={{fontSize:13,fontWeight:700,color:"#e0e0e0"}}>{r.title}</span>
+            <div style={{display:"flex",gap:8}}><span style={S.badge(SEVERITY_COLORS[r.severity])}>{r.severity}</span><span style={S.badge("#546e7a")}>{r.category}</span></div>
+          </div>
+          <div style={{color:"#aaa",lineHeight:1.6,marginBottom:6}}>{r.detail}</div>
+          <div style={{color:"#546e7a",fontSize:10}}><strong>EVIDENCE:</strong> {r.evidence} | <strong>DATE:</strong> {r.date}</div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderChecklist = () => (
+    <div>
+      <div style={S.cardTitle}>Operations Checklist</div>
+      <div style={{marginBottom:16,color:"#546e7a",fontSize:11}}>
+        Progress: {completedTasks}/{totalTasks} ({Math.round(completedTasks/totalTasks*100)}%)
+        <div style={{background:"#1a1a2e",height:6,borderRadius:3,marginTop:6,overflow:"hidden"}}>
+          <div style={{background:completedTasks/totalTasks>.5?"#00e676":"#ff6d00",height:"100%",width:completedTasks/totalTasks*100+"%",borderRadius:3,transition:"width .3s"}}/>
+        </div>
+      </div>
+      {["phase1","phase2","phase3","phase4"].map(phase=>{
+        const items=data.checklist.filter(c=>c.phase===phase);
+        const done=items.filter(c=>c.done).length;
+        return(
+          <div key={phase} style={{...S.card,marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <span style={{fontSize:11,fontWeight:700,color:"#ff1744",letterSpacing:1}}>{PHASE_LABELS[phase]}</span>
+              <span style={{fontSize:10,color:"#546e7a"}}>{done}/{items.length}</span>
+            </div>
+            {items.map(c=>(
+              <div key={c.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"6px 0",borderBottom:"1px solid #0a0a12",cursor:"pointer"}} onClick={()=>toggleCheck(c.id)}>
+                <span style={{fontSize:16,color:c.done?"#00e676":"#2a2a3e",flexShrink:0,lineHeight:1,width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",border:c.done?"none":"1px solid #2a2a3e",borderRadius:2}}>{c.done?"✓":""}</span>
+                <div style={{flex:1}}>
+                  <span style={{color:c.done?"#546e7a":"#c8ccd0",textDecoration:c.done?"line-through":"none",fontSize:12}}>{c.task}</span>
+                  {c.notes&&<div style={{fontSize:10,color:"#546e7a",marginTop:2}}>{c.notes}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderExtraction = () => {
+    const guide = data.dataExtractionGuide || DEFAULT_DATA.dataExtractionGuide;
+    return (
+      <div>
+        <div style={S.cardTitle}>Data Extraction Playbooks</div>
+        <div style={{...S.card,borderColor:"#00e676",background:"linear-gradient(135deg,#0c0c14 0%,#0a140e 100%)"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#00e676",letterSpacing:2,marginBottom:8}}>ALI'S COVER STORY</div>
+          <div style={{color:"#aaa",lineHeight:1.7}}>Ali IS the company lawyer and financial agent. Downloading bank statements and reviewing POS reports is literally her job description. She does not need to explain why she's pulling data. She does not need Christian's permission. She does not need Mark or Jon's approval. If anyone asks, she's doing her job — preparing for tax season, reviewing operational efficiency, standard financial oversight.</div>
+        </div>
+
+        <div style={{...S.card}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#29b6f6",letterSpacing:1,marginBottom:12}}>🏦 {guide.zions.title}</div>
+          {guide.zions.steps.map((step, i) => (
+            <div key={i} style={{display:"flex",gap:10,padding:"8px 0",borderBottom:"1px solid #0a0a12"}}>
+              <span style={{color:"#29b6f6",fontWeight:700,flexShrink:0,width:24}}>{i+1}.</span>
+              <span style={{color:"#c8ccd0",lineHeight:1.6}}>{step}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{...S.card}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#ff6d00",letterSpacing:1,marginBottom:12}}>📊 {guide.spoton.title}</div>
+          {guide.spoton.steps.map((step, i) => (
+            <div key={i} style={{display:"flex",gap:10,padding:"8px 0",borderBottom:"1px solid #0a0a12"}}>
+              <span style={{color:"#ff6d00",fontWeight:700,flexShrink:0,width:24}}>{i+1}.</span>
+              <span style={{color:"#c8ccd0",lineHeight:1.6}}>{step}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{...S.card,borderColor:"#ff1744"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#ff1744",letterSpacing:2,marginBottom:8}}>⚠ OPSEC RULES</div>
+          <div style={{color:"#aaa",lineHeight:1.8}}>
+            1. Pull data from a PRIVATE device — not a shared/work computer Christian has access to.<br/>
+            2. Save to a personal cloud drive (Google Drive on personal account), NOT company systems.<br/>
+            3. Do NOT tell Christian, Mark, or Jon you're pulling data. It's your job. You don't report routine work.<br/>
+            4. If SpotOn or Zions shows login history/notifications, be aware Christian might see "Ali logged in."<br/>
+            5. Pull EVERYTHING in one session if possible. Don't make multiple trips that create a pattern.<br/>
+            6. Screenshot the account summary pages showing ALL accounts — some may be hidden from default view.
+          </div>
+        </div>
+
+        <div style={{...S.card}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#ffd600",letterSpacing:2,marginBottom:8}}>📁 FILE ORGANIZATION</div>
+          <div style={{color:"#aaa",lineHeight:1.8,fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>
+            /HiresAudit/<br/>
+            ├── /ZionsBank/<br/>
+            │   ├── /OperatingAccount/<br/>
+            │   │   ├── statements/ (PDFs by month)<br/>
+            │   │   └── transactions/ (CSV exports)<br/>
+            │   ├── /PayrollAccount/<br/>
+            │   └── /OtherAccounts/<br/>
+            ├── /SpotOn/<br/>
+            │   ├── /SLC/<br/>
+            │   │   ├── daily-sales.csv<br/>
+            │   │   ├── payment-breakdown.csv<br/>
+            │   │   ├── voids-comps.csv<br/>
+            │   │   └── labor.csv<br/>
+            │   ├── /Midvale/<br/>
+            │   └── /WestValley/<br/>
+            ├── /Payroll/<br/>
+            ├── /Vendors/<br/>
+            ├── /Tax/<br/>
+            └── /Evidence/ (screenshots, texts, docs)
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTimeline = () => (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div style={S.cardTitle}>Investigation Timeline</div>
+        <button style={S.btn()} onClick={()=>{setShowAddForm("timeline");setNewItem({});}}>+ ADD EVENT</button>
+      </div>
+      {showAddForm==="timeline"&&(
+        <div style={{...S.card,borderColor:"#29b6f6"}}>
+          <input style={{...S.input,marginBottom:8}} placeholder="Date..." value={newItem.date||""} onChange={e=>setNewItem({...newItem,date:e.target.value})}/>
+          <textarea style={{...S.textarea,minHeight:60,marginBottom:8}} placeholder="What happened..." value={newItem.event||""} onChange={e=>setNewItem({...newItem,event:e.target.value})}/>
+          <input style={{...S.input,marginBottom:8}} placeholder="Source..." value={newItem.source||""} onChange={e=>setNewItem({...newItem,source:e.target.value})}/>
+          <div style={{display:"flex",gap:8}}><button style={S.btn("#29b6f6")} onClick={addTimelineEvent}>Save</button><button style={S.btnGhost} onClick={()=>setShowAddForm(null)}>Cancel</button></div>
+        </div>
+      )}
+      <div style={{borderLeft:"2px solid #1a1a2e",marginLeft:12,paddingLeft:24}}>
+        {data.timeline.map((t,i)=>(
+          <div key={t.id} style={{position:"relative",marginBottom:20}}>
+            <div style={{position:"absolute",left:-31,top:4,width:12,height:12,borderRadius:"50%",background:i===data.timeline.length-1?"#ff1744":"#1a1a2e",border:"2px solid #29b6f6"}}/>
+            <div style={{fontSize:10,color:"#29b6f6",fontWeight:700,letterSpacing:1,marginBottom:4}}>{t.date}</div>
+            <div style={{color:"#c8ccd0",fontSize:12,lineHeight:1.5}}>{t.event}</div>
+            <div style={{color:"#546e7a",fontSize:10,marginTop:2}}>Source: {t.source}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderTools = () => (
+    <div>
+      <div style={S.cardTitle}>Reconnaissance Tools</div>
+      <div style={{color:"#546e7a",marginBottom:16,fontSize:11}}>Public records and intelligence sources. All legal. All free or low-cost. Open links in new tab.</div>
+      {SNOOPING_TOOLS.map(cat=>(
+        <div key={cat.category} style={S.card}>
+          <div style={{fontSize:11,fontWeight:700,color:"#29b6f6",letterSpacing:2,marginBottom:12,textTransform:"uppercase"}}>{cat.category}</div>
+          {cat.links.map(l=>(
+            <div key={l.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #0a0a12"}}>
+              <div>
+                <a href={l.url} target="_blank" rel="noopener noreferrer" style={{...S.link,fontWeight:600}}>{l.name} ↗</a>
+                <div style={{fontSize:10,color:"#546e7a",marginTop:2}}>{l.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderNotes = () => (
+    <div>
+      <div style={S.cardTitle}>Master Intelligence Notes</div>
+      <textarea style={{...S.textarea,minHeight:500}} value={data.notes} onChange={e=>save({...data,notes:e.target.value})} placeholder="Investigation notes, theories, observations..."/>
+      <div style={{color:"#546e7a",fontSize:10,marginTop:8}}>Auto-saved to browser storage. Persistent across sessions.</div>
+    </div>
+  );
+
+  const views = {dashboard:renderDashboard,entities:renderEntities,persons:renderPersons,redflags:renderRedFlags,checklist:renderChecklist,extraction:renderExtraction,timeline:renderTimeline,tools:renderTools,notes:renderNotes};
+
+  return (
+    <div style={{background:"#06060b",minHeight:"100vh"}}>
+      <div style={S.header}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:28}}>&#9763;</span>
+          <div>
+            <div style={{fontSize:18,fontWeight:800,letterSpacing:3,color:"#ff1744",textTransform:"uppercase"}}>SKIPPY WAR ROOM</div>
+            <div style={{fontSize:10,color:"#546e7a",letterSpacing:2,marginTop:2}}>HIRES ENTERPRISES — FORENSIC INVESTIGATION</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:10,color:"#546e7a",letterSpacing:1}}>CLASSIFIED</span>
+          <button style={S.btnGhost} onClick={resetData}>RESET</button>
+        </div>
+      </div>
+      <div style={S.tabBar}>
+        {tabs.map(t=>(
+          <div key={t.id} style={S.tab(activeTab===t.id)} onClick={()=>setActiveTab(t.id)}>
+            <span>{t.icon}</span><span>{t.label}</span>
+          </div>
+        ))}
+      </div>
+      <div style={S.content}>{views[activeTab]()}</div>
+      <div style={{borderTop:"1px solid #1a1a2e",padding:"12px 24px",display:"flex",justifyContent:"space-between",color:"#1a1a2e",fontSize:9,letterSpacing:1}}>
+        <span>SKIPPY INTELLIGENCE DIVISION — FOSTER LABS</span>
+        <span>v{VERSION} — LOCAL STORAGE ACTIVE</span>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<App/>, document.getElementById('root'));
+</script>
+</body>
+</html>
