@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Foster Finance Command | Skippy</title>
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+<style>
+  :root {
+    --bg: #08080d;
+    --surface: #0f0f18;
+    --card: #161622;
+    --card-hover: #1e1e30;
+    --border: #252538;
+    --text: #e4e4f0;
+    --dim: #7878a0;
+    --accent: #00d4aa;
+    --accent-dim: rgba(0,212,170,0.12);
+    --warn: #ffaa00;
+    --warn-dim: rgba(255,170,0,0.1);
+    --danger: #ff4466;
+    --danger-dim: rgba(255,68,102,0.1);
+    --blue: #4488ff;
+    --blue-dim: rgba(68,136,255,0.1);
+    --purple: #aa66ff;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* PASSWORD GATE */
+  #gate {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+    background: radial-gradient(ellipse at 30% 20%, rgba(0,212,170,0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(68,136,255,0.03) 0%, transparent 50%),
+                var(--bg);
+  }
+  .gate-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 40px; max-width: 400px; width: 100%; text-align: center;
+  }
+  .gate-box h1 { font-size: 13px; letter-spacing: 3px; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; }
+  .gate-box h2 { font-size: 24px; font-weight: 700; margin-bottom: 24px; }
+  .gate-input {
+    width: 100%; padding: 14px 16px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: var(--mono); font-size: 16px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .gate-input:focus { border-color: var(--accent); }
+  .gate-input::placeholder { color: var(--dim); }
+  .gate-btn {
+    width: 100%; padding: 14px; background: var(--accent); color: var(--bg);
+    border: none; border-radius: 8px; font-family: var(--sans); font-size: 14px;
+    font-weight: 700; cursor: pointer; margin-top: 12px; transition: opacity 0.2s;
+  }
+  .gate-btn:hover { opacity: 0.9; }
+  .gate-error { color: var(--danger); font-size: 13px; margin-top: 10px; display: none; }
+
+  /* MAIN APP */
+  #app { display: none; }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, var(--surface) 0%, var(--card) 100%);
+    border-bottom: 1px solid var(--border); padding: 20px 24px;
+    position: sticky; top: 0; z-index: 100; backdrop-filter: blur(20px);
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .header-brand { font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .header-title { font-size: 22px; font-weight: 700; }
+  .header-burn { font-family: var(--mono); }
+  .header-burn .num { font-size: 28px; font-weight: 700; color: var(--danger); }
+  .header-burn .label { font-size: 11px; color: var(--dim); }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-top: 16px; flex-wrap: wrap; }
+  .tab {
+    background: transparent; color: var(--dim); border: 1px solid var(--border);
+    padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    font-weight: 600; font-family: var(--sans); transition: all 0.2s;
+  }
+  .tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .tab:hover:not(.active) { border-color: var(--dim); color: var(--text); }
+  .tab .badge { background: var(--danger); color: white; font-size: 10px; padding: 1px 5px; border-radius: 8px; margin-left: 4px; }
+
+  /* CONTENT */
+  .content { padding: 20px 24px; max-width: 960px; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; margin-bottom: 12px;
+  }
+  .card-title { font-size: 12px; font-weight: 700; color: var(--dim); letter-spacing: 0.5px; margin-bottom: 12px; text-transform: uppercase; }
+
+  /* STAT GRID */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .stat .label { font-size: 11px; color: var(--dim); font-weight: 500; margin-bottom: 6px; }
+  .stat .value { font-family: var(--mono); font-size: 24px; font-weight: 700; }
+  .stat .sub { font-size: 11px; color: var(--dim); margin-top: 4px; }
+
+  /* ALERT BANNER */
+  .alert-banner {
+    background: var(--danger-dim); border: 1px solid rgba(255,68,102,0.25);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 20px;
+  }
+  .alert-banner .title { font-size: 12px; font-weight: 700; color: var(--danger); margin-bottom: 8px; }
+  .alert-banner .item { font-size: 13px; margin-bottom: 4px; }
+
+  /* SETUP BANNER */
+  .setup-banner {
+    background: var(--blue-dim); border: 1px solid rgba(68,136,255,0.25);
+    border-radius: 10px; padding: 16px; margin-bottom: 20px;
+  }
+  .setup-banner h3 { font-size: 14px; color: var(--blue); margin-bottom: 8px; }
+  .setup-banner p { font-size: 12px; color: var(--dim); line-height: 1.6; margin-bottom: 8px; }
+  .setup-banner .step { font-size: 12px; color: var(--text); padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .setup-banner .step:last-child { border: none; }
+  .setup-banner .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+  .setup-banner .status-dot.ok { background: var(--accent); }
+  .setup-banner .status-dot.pending { background: var(--warn); }
+  .setup-banner .status-dot.error { background: var(--danger); }
+
+  /* CONNECT BUTTON */
+  .connect-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, var(--accent), #00b894);
+    color: var(--bg); border: none; border-radius: 8px;
+    padding: 12px 24px; font-family: var(--sans); font-size: 14px;
+    font-weight: 700; cursor: pointer; transition: all 0.2s;
+    margin: 6px 4px 6px 0;
+  }
+  .connect-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .connect-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .connect-btn.secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+
+  /* INSTITUTION LIST */
+  .inst-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .inst-name { font-size: 14px; font-weight: 600; }
+  .inst-date { font-size: 11px; color: var(--dim); }
+  .inst-status { font-size: 11px; font-weight: 600; color: var(--accent); }
+
+  /* ACCOUNT ROW */
+  .account-row {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .account-row .name { font-size: 14px; font-weight: 600; }
+  .account-row .type { font-size: 11px; color: var(--dim); text-transform: capitalize; }
+  .account-row .balance { font-family: var(--mono); font-size: 18px; font-weight: 600; }
+  .account-row .balance.positive { color: var(--accent); }
+  .account-row .balance.negative { color: var(--danger); }
+
+  /* TRANSACTION ROW */
+  .txn-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .txn-row:last-child { border: none; }
+  .txn-name { font-size: 13px; font-weight: 500; }
+  .txn-cat { font-size: 10px; color: var(--dim); }
+  .txn-date { font-size: 11px; color: var(--dim); }
+  .txn-amount { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+  .txn-amount.expense { color: var(--danger); }
+  .txn-amount.income { color: var(--accent); }
+
+  /* BAR CHART */
+  .bar-row { margin-bottom: 8px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+  .bar-label .cat { color: var(--dim); }
+  .bar-label .val { font-family: var(--mono); font-weight: 500; }
+  .bar-track { background: var(--border); border-radius: 3px; height: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+  /* SUBSCRIPTION ROW */
+  .sub-row {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 8px;
+  }
+  .sub-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .sub-name { font-size: 14px; font-weight: 600; }
+  .sub-price { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+  .sub-note { font-size: 11px; color: var(--dim); line-height: 1.5; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .badge.keep { background: var(--accent-dim); color: var(--accent); }
+  .badge.review { background: var(--warn-dim); color: var(--warn); }
+  .badge.switch { background: rgba(170,102,255,0.12); color: var(--purple); }
+  .badge.urgent { background: var(--danger-dim); color: var(--danger); }
+  .badge.investigate { background: var(--blue-dim); color: var(--blue); }
+  .badge.done { background: rgba(255,255,255,0.05); color: var(--dim); }
+  .badge.active { background: var(--accent-dim); color: var(--accent); }
+  .badge.past-due { background: var(--danger-dim); color: var(--danger); }
+
+  /* SPINNER */
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--dim); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* PHASE PLAN */
+  .phase { margin-bottom: 20px; }
+  .phase-title { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .phase-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .phase-label { font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+  .phase-item {
+    background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 14px; margin-bottom: 4px; margin-left: 18px; font-size: 12px;
+    line-height: 1.5; border-left: 3px solid transparent;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .stats { grid-template-columns: 1fr; }
+    .header-burn .num { font-size: 22px; }
+    .header-title { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PASSWORD GATE -->
+<div id="gate">
+  <div class="gate-box">
+    <h1>Skippy Finance</h1>
+    <h2>Foster Finance Command</h2>
+    <input type="password" class="gate-input" id="pw" placeholder="Enter password" autocomplete="off">
+    <button class="gate-btn" onclick="checkPassword()">Access Dashboard</button>
+    <div class="gate-error" id="pw-error">Invalid password. Try again.</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <div class="header-brand">Skippy Financial Intelligence</div>
+        <div class="header-title">Foster Finance Command</div>
+      </div>
+      <div class="header-burn" style="text-align:right">
+        <div><span class="num" id="burn-rate">$620</span><span style="font-size:14px;color:var(--dim)">/mo</span></div>
+        <div class="label">known recurring burn</div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="accounts">Accounts</button>
+      <button class="tab" data-tab="transactions">Transactions</button>
+      <button class="tab" data-tab="subscriptions">Subscriptions</button>
+      <button class="tab" data-tab="plan">Action Plan</button>
+      <button class="tab" data-tab="connect">Connect <span class="badge" style="background:var(--blue);color:white;font-size:9px;padding:1px 5px;border-radius:6px;margin-left:4px">Setup</span></button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- OVERVIEW -->
+    <div class="section active" id="sec-overview">
+      <div id="system-status"></div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="label">Monthly Burn (Known)</div>
+          <div class="value" style="color:var(--danger)">$620</div>
+          <div class="sub">$7,440/year</div>
+        </div>
+        <div class="stat">
+          <div class="label">Connected Accounts</div>
+          <div class="value" style="color:var(--blue)" id="stat-accounts">0</div>
+          <div class="sub" id="stat-accounts-sub">Connect Chase & Amex</div>
+        </div>
+        <div class="stat">
+          <div class="label">Savings Potential</div>
+          <div class="value" style="color:var(--accent)">$115+</div>
+          <div class="sub">/month with T-Mobile switch + cuts</div>
+        </div>
+      </div>
+
+      <div class="alert-banner">
+        <div class="title">REQUIRES IMMEDIATE ACTION</div>
+        <div class="item">● Google Cloud Platform billing is PAST DUE — fix payment at console.cloud.google.com</div>
+        <div class="item">● Prime Video changing to "Ultra" April 10 — likely price increase</div>
+        <div class="item">● PayPal Credit Card — unknown balance, paid $75 Mar 12</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Spending by Category (from Gmail)</div>
+        <div id="category-bars"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Live Account Balances</div>
+        <div id="overview-balances">
+          <p style="color:var(--dim);font-size:13px">Connect your Chase and Amex accounts to see real-time balances here. Go to the <a href="#" onclick="switchTab('connect')" style="color:var(--accent)">Connect</a> tab to get started.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCOUNTS -->
+    <div class="section" id="sec-accounts">
+      <div id="accounts-list">
+        <p style="color:var(--dim);font-size:13px;margin-bottom:16px">Accounts will appear here once you connect via Plaid.</p>
+      </div>
+      <button class="connect-btn" onclick="openPlaidLink()">+ Connect New Account</button>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div class="section" id="sec-transactions">
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="connect-btn secondary" onclick="loadTransactions(7)" style="padding:8px 16px;font-size:12px">7 Days</button>
+        <button class="connect-btn secondary" onclick="loadTransactions(30)" style="padding:8px 16px;font-size:12px">30 Days</button>
+        <button class="connect-btn secondary" onclick="loadTransactions(90)" style="padding:8px 16px;font-size:12px">90 Days</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Recent Transactions</div>
+        <div id="txn-list">
+          <p style="color:var(--dim);font-size:13px">Connect accounts to see transactions.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Category Breakdown</div>
+        <div id="txn-categories"></div>
+      </div>
+    </div>
+
+    <!-- SUBSCRIPTIONS -->
+    <div class="section" id="sec-subscriptions">
+      <div style="font-size:12px;color:var(--dim);margin-bottom:16px">All recurring charges detected from Gmail. Sorted by monthly cost.</div>
+      <div id="sub-list"></div>
+    </div>
+
+    <!-- ACTION PLAN -->
+    <div class="section" id="sec-plan">
+      <div id="plan-content"></div>
+    </div>
+
+    <!-- CONNECT -->
+    <div class="section" id="sec-connect">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">System Status</div>
+        <div id="connect-status"><div class="spinner"></div> Checking...</div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">Connected Institutions</div>
+        <div id="connected-list">
+          <p style="color:var(--dim);font-size:13px">No accounts connected yet.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Connect a Bank or Credit Card</div>
+        <p style="font-size:13px;color:var(--dim);margin-bottom:16px;line-height:1.6">
+          Click below to securely connect your Chase, Amex, or any financial institution through Plaid.
+          Your credentials are never stored on our servers — Plaid handles all authentication directly with your bank.
+        </p>
+        <button class="connect-btn" id="plaid-connect-btn" onclick="openPlaidLink()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Connect Bank Account
+        </button>
+        <div id="plaid-status" style="margin-top:12px;font-size:12px"></div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <div class="card-title">Setup Instructions</div>
+        <div style="font-size:12px;color:var(--dim);line-height:1.8">
+          <p><strong style="color:var(--text)">If Plaid is not configured yet:</strong></p>
+          <p>1. Sign up at <a href="https://dashboard.plaid.com/signup" target="_blank" style="color:var(--accent)">dashboard.plaid.com</a> (free for development)</p>
+          <p>2. Get your <code style="background:var(--border);padding:2px 6px;border-radius:3px">client_id</code> and <code style="background:var(--border);padding:2px 6px;border-radius:3px">secret</code> from the Plaid dashboard</p>
+          <p>3. Tell Skippy (Claude) your Plaid keys and he'll configure them on Cloudflare</p>
+          <p>4. Come back here and click "Connect Bank Account"</p>
+          <p style="margin-top:8px"><strong style="color:var(--text)">Plaid's free tier</strong> supports 100 connections — more than enough for personal use.</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- .content -->
+</div><!-- #app -->
+
+<script>
+// ============ PASSWORD GATE ============
+const PASS_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'; // sha256 of 'skippy'
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkPassword() {
+  const pw = document.getElementById('pw').value.trim().toLowerCase();
+  const hash = await sha256(pw);
+  if (hash === PASS_HASH || pw === 'skippy') {
+    sessionStorage.setItem('ff_auth', '1');
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    initApp();
+  } else {
+    document.getElementById('pw-error').style.display = 'block';
+    document.getElementById('pw').value = '';
+    document.getElementById('pw').focus();
+  }
+}
+
+document.getElementById('pw').addEventListener('keydown', e => { if(e.key==='Enter') checkPassword(); });
+
+if (sessionStorage.getItem('ff_auth')) {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  setTimeout(initApp, 100);
+}
+
+// ============ TAB SWITCHING ============
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+});
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active');
+  document.getElementById(`sec-${tabId}`)?.classList.add('active');
+}
+
+// ============ APP INIT ============
+let plaidHandler = null;
+let systemStatus = null;
+
+async function initApp() {
+  checkSystemStatus();
+  renderSubscriptions();
+  renderCategories();
+  renderActionPlan();
+}
+
+// ============ SYSTEM STATUS ============
+async function checkSystemStatus() {
+  try {
+    const res = await fetch('/api/plaid/status');
+    systemStatus = await res.json();
+    renderSystemStatus();
+    if (systemStatus.connected_institutions?.length > 0) {
+      loadBalances();
+    }
+  } catch(e) {
+    document.getElementById('connect-status').innerHTML = `<span style="color:var(--danger)">Could not reach backend. Functions may not be deployed yet.</span>`;
+    document.getElementById('system-status').innerHTML = `
+      <div class="setup-banner">
+        <h3>Backend Deploying...</h3>
+        <p>The Cloudflare Functions are still deploying. Refresh in a minute. In the meantime, your subscription data from Gmail is available below.</p>
+      </div>`;
+  }
+}
+
+function renderSystemStatus() {
+  if (!systemStatus) return;
+  const s = systemStatus;
+  
+  const dot = (ok) => `<span class="status-dot ${ok ? 'ok' : 'pending'}"></span>`;
+  
+  document.getElementById('connect-status').innerHTML = `
+    <div class="step">${dot(true)} Cloudflare Workers: Online</div>
+    <div class="step">${dot(s.kv_bound)} KV Storage: ${s.kv_bound ? 'Bound' : 'Not bound — need to configure'}</div>
+    <div class="step">${dot(s.plaid_configured)} Plaid API: ${s.plaid_configured ? `Configured (${s.plaid_env})` : 'Keys not set — see setup below'}</div>
+    <div class="step">${dot(s.connected_institutions?.length > 0)} Connected Accounts: ${s.connected_institutions?.length || 0}</div>
+  `;
+
+  if (s.connected_institutions?.length > 0) {
+    let html = '';
+    s.connected_institutions.forEach(inst => {
+      html += `<div class="inst-card">
+        <div><div class="inst-name">${inst.name}</div><div class="inst-date">Connected ${new Date(inst.connected_at).toLocaleDateString()}</div></div>
+        <div class="inst-status">LINKED</div>
+      </div>`;
+    });
+    document.getElementById('connected-list').innerHTML = html;
+    document.getElementById('stat-accounts').textContent = s.connected_institutions.length;
+    document.getElementById('stat-accounts-sub').textContent = s.connected_institutions.map(i => i.name).join(', ');
+  }
+
+  if (!s.plaid_configured) {
+    document.getElementById('system-status').innerHTML = `
+      <div class="setup-banner">
+        <h3>Plaid Not Configured Yet</h3>
+        <p>To connect your Chase and Amex accounts, Plaid API keys need to be set. Sign up at 
+        <a href="https://dashboard.plaid.com/signup" target="_blank" style="color:var(--accent)">dashboard.plaid.com</a>
+        (free) and give your client_id and secret to Skippy to configure.</p>
+      </div>`;
+    document.getElementById('plaid-connect-btn').disabled = true;
+  } else {
+    document.getElementById('system-status').innerHTML = '';
+    document.getElementById('plaid-connect-btn').disabled = false;
+  }
+}
+
+// ============ PLAID LINK ============
+async function openPlaidLink() {
+  if (!systemStatus?.plaid_configured) {
+    document.getElementById('plaid-status').innerHTML = `<span style="color:var(--warn)">Plaid keys not configured yet. See setup instructions below.</span>`;
+    return;
+  }
+
+  document.getElementById('plaid-status').innerHTML = `<div class="spinner"></div> Initializing Plaid Link...`;
+
+  try {
+    const res = await fetch('/api/plaid/create-link-token', { method: 'POST' });
+    const data = await res.json();
+
+    if (data.error) {
+      document.getElementById('plaid-status').innerHTML = `<span style="color:var(--danger)">Error: ${data.error}</span>`;
+      return;
+    }
+
+    plaidHandler = Plaid.create({
+      token: data.link_token,
+      onSuccess: async (public_token, metadata) => {
+        document.getElementById('plaid-status').innerHTML = `<div class="spinner"></div> Connecting ${metadata.institution.name}...`;
+        
+        try {
+          const exRes = await fetch('/api/plaid/exchange-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ public_token, institution: metadata.institution }),
+          });
+          const exData = await exRes.json();
+          
+          if (exData.success) {
+            document.getElementById('plaid-status').innerHTML = `<span style="color:var(--accent)">✓ ${metadata.institution.name} connected successfully!</span>`;
+            checkSystemStatus();
+            setTimeout(loadBalances, 1000);
+          } else {
+            document.getElementById('plaid-status').innerHTML = `<span style="color:var(--danger)">Error: ${exData.error}</span>`;
+          }
+        } catch(e) {
+          document.getElementById('plaid-status').innerHTML = `<span style="color:var(--danger)">Error: ${e.message}</span>`;
+        }
+      },
+      onExit: (err) => {
+        if (err) document.getElementById('plaid-status').innerHTML = `<span style="color:var(--warn)">Connection cancelled.</span>`;
+        else document.getElementById('plaid-status').innerHTML = '';
+      },
+    });
+
+    plaidHandler.open();
+    document.getElementById('plaid-status').innerHTML = '';
+  } catch(e) {
+    document.getElementById('plaid-status').innerHTML = `<span style="color:var(--danger)">Error: ${e.message}</span>`;
+  }
+}
+
+// ============ LOAD BALANCES ============
+async function loadBalances() {
+  try {
+    const res = await fetch('/api/plaid/balances');
+    const data = await res.json();
+    
+    if (data.accounts?.length > 0) {
+      let accountsHtml = '';
+      let overviewHtml = '';
+      
+      data.accounts.forEach(acct => {
+        const balance = acct.balances?.current ?? 0;
+        const isCredit = acct.type === 'credit';
+        const displayBalance = isCredit ? -balance : balance;
+        const colorClass = displayBalance >= 0 ? 'positive' : 'negative';
+        const sign = displayBalance < 0 ? '-' : '';
+        
+        const row = `<div class="account-row">
+          <div>
+            <div class="name">${acct.name}</div>
+            <div class="type">${acct.institution_name} · ${acct.subtype || acct.type}</div>
+          </div>
+          <div class="balance ${colorClass}">${sign}$${Math.abs(displayBalance).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+        </div>`;
+        
+        accountsHtml += row;
+        overviewHtml += row;
+      });
+      
+      document.getElementById('accounts-list').innerHTML = accountsHtml + 
+        `<p style="font-size:11px;color:var(--dim);margin-top:8px">Last updated: ${new Date(data.fetched_at).toLocaleString()}</p>`;
+      document.getElementById('overview-balances').innerHTML = overviewHtml;
+    }
+  } catch(e) {
+    console.error('Failed to load balances:', e);
+  }
+}
+
+// ============ LOAD TRANSACTIONS ============
+async function loadTransactions(days = 30) {
+  document.getElementById('txn-list').innerHTML = `<div class="spinner"></div> Loading transactions...`;
+  
+  try {
+    const res = await fetch(`/api/plaid/transactions?days=${days}`);
+    const data = await res.json();
+    
+    if (data.transactions?.length > 0) {
+      let html = '';
+      data.transactions.slice(0, 100).forEach(txn => {
+        const isExpense = txn.amount > 0;
+        html += `<div class="txn-row">
+          <div style="flex:1">
+            <div class="txn-name">${txn.name || txn.merchant_name || 'Unknown'}</div>
+            <div class="txn-cat">${txn.personal_finance_category?.primary || txn.category?.[0] || ''} · ${txn.institution_name || ''}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="txn-amount ${isExpense ? 'expense' : 'income'}">${isExpense ? '-' : '+'}$${Math.abs(txn.amount).toFixed(2)}</div>
+            <div class="txn-date">${txn.date}</div>
+          </div>
+        </div>`;
+      });
+      document.getElementById('txn-list').innerHTML = html;
+      
+      // Category breakdown
+      if (data.summary?.categories) {
+        const cats = Object.entries(data.summary.categories).sort((a,b) => b[1].total - a[1].total);
+        const maxCat = cats[0]?.[1]?.total || 1;
+        let catHtml = '';
+        cats.forEach(([name, info]) => {
+          const pct = (info.total / maxCat) * 100;
+          const color = info.total > 500 ? 'var(--danger)' : info.total > 200 ? 'var(--warn)' : 'var(--accent)';
+          catHtml += `<div class="bar-row">
+            <div class="bar-label"><span class="cat">${name}</span><span class="val">$${info.total.toFixed(2)} (${info.count})</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+          </div>`;
+        });
+        document.getElementById('txn-categories').innerHTML = catHtml;
+      }
+    } else {
+      document.getElementById('txn-list').innerHTML = `<p style="color:var(--dim);font-size:13px">No transactions found. Make sure accounts are connected.</p>`;
+    }
+  } catch(e) {
+    document.getElementById('txn-list').innerHTML = `<span style="color:var(--danger)">Error loading transactions: ${e.message}</span>`;
+  }
+}
+
+// ============ SUBSCRIPTIONS (Gmail data) ============
+const subscriptions = [
+  { name:"Verizon Wireless", amount:230.76, freq:"mo", cat:"Phone", action:"switch", note:"4 lines — SWITCHING TO T-MOBILE", status:"active" },
+  { name:"All West Internet", amount:100, freq:"mo", cat:"Utilities", action:"keep", note:"Fiber to 2182 Loveland Ln. Consistent $100/mo.", status:"active" },
+  { name:"PayPal Credit Card", amount:75, freq:"mo", cat:"Debt", action:"investigate", note:"Paid $75 Mar 12. Unknown total balance. Check APR!", status:"active" },
+  { name:"Google AI Pro + Home", amount:32.15, freq:"mo", cat:"Tech/AI", action:"review", note:"$19.99 AI Pro + $9.99 Home Premium + tax on Amex-1015", status:"active" },
+  { name:"CrunchLabs", amount:29.99, freq:"mo", cat:"Charles", action:"keep", note:"Engineering sub box for Charles. Started Feb 16.", status:"active" },
+  { name:"New York Times", amount:25, freq:"mo", cat:"News", action:"keep", note:"Cooking, Games, News. Daily emails.", status:"active" },
+  { name:"Amazon Subscribe & Save", amount:25, freq:"mo", cat:"Household", action:"review", note:"Natrol Sleep gummies. Cancelled dog food, filament, etc.", status:"active" },
+  { name:"PlayStation", amount:19.29, freq:"mo", cat:"Entertainment", action:"review", note:"Charged via Venmo Feb 27", status:"active" },
+  { name:"Amazon Prime", amount:14.99, freq:"mo", cat:"Shopping", action:"review", note:"Going to 'Ultra' Apr 10. Price may increase.", status:"active" },
+  { name:"Audible", amount:14.99, freq:"mo", cat:"Entertainment", action:"review", note:"Expeditionary Force x5! But are you listening?", status:"active" },
+  { name:"Canva", amount:12.99, freq:"mo", cat:"Business", action:"review", note:"Use for DEF/Davis Kids?", status:"active" },
+  { name:"WBUR", amount:10, freq:"mo", cat:"Donations", action:"review", note:"NPR member. Tax deductible.", status:"active" },
+  { name:"Anthropic Claude", amount:5.36, freq:"use", cat:"Tech/AI", action:"keep", note:"API credits — the Skippy brain. Business expense.", status:"active" },
+  { name:"GoPro", amount:4.17, freq:"mo", cat:"Tech", action:"review", note:"~$50/yr. New pricing Jan 25. Worth it?", status:"active" },
+  { name:"Nintendo Switch Online", amount:3.33, freq:"mo", cat:"Entertainment", action:"review", note:"~$40/yr for Charles.", status:"active" },
+  { name:"Google Cloud Platform", amount:0, freq:"mo", cat:"Tech", action:"urgent", note:"TWO PAST DUE NOTICES. Fix billing NOW.", status:"past-due" },
+  { name:"Cloudflare", amount:0, freq:"mo", cat:"Business", action:"keep", note:"Free plan. daviskids.org + wickowaypoint.com", status:"active" },
+];
+
+function renderSubscriptions() {
+  const sorted = [...subscriptions].sort((a,b) => b.amount - a.amount);
+  let html = '';
+  sorted.forEach(s => {
+    const priceColor = s.amount > 100 ? 'var(--danger)' : s.amount > 25 ? 'var(--warn)' : 'var(--accent)';
+    html += `<div class="sub-row">
+      <div class="sub-header">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="sub-name">${s.name}</span>
+          <span class="badge ${s.status === 'past-due' ? 'past-due' : 'active'}">${s.status}</span>
+          <span class="badge ${s.action}">${s.action}</span>
+        </div>
+        <div class="sub-price" style="color:${priceColor}">${s.amount > 0 ? '$'+s.amount.toFixed(2) : '—'}<span style="font-size:10px;color:var(--dim)">/${s.freq}</span></div>
+      </div>
+      <div class="sub-note"><span class="badge" style="background:var(--border);color:var(--dim);font-size:9px">${s.cat}</span> ${s.note}</div>
+    </div>`;
+  });
+  document.getElementById('sub-list').innerHTML = html;
+}
+
+// ============ CATEGORIES ============
+function renderCategories() {
+  const cats = {};
+  subscriptions.filter(s => s.amount > 0).forEach(s => {
+    cats[s.cat] = (cats[s.cat] || 0) + s.amount;
+  });
+  const sorted = Object.entries(cats).sort((a,b) => b[1] - a[1]);
+  const max = sorted[0]?.[1] || 1;
+  
+  let html = '';
+  sorted.forEach(([cat, amount]) => {
+    const color = amount > 100 ? 'var(--danger)' : amount > 30 ? 'var(--warn)' : 'var(--accent)';
+    html += `<div class="bar-row">
+      <div class="bar-label"><span class="cat">${cat}</span><span class="val">$${amount.toFixed(2)}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(amount/max)*100}%;background:${color}"></div></div>
+    </div>`;
+  });
+  document.getElementById('category-bars').innerHTML = html;
+}
+
+// ============ ACTION PLAN ============
+function renderActionPlan() {
+  const phases = [
+    { phase:"TODAY", color:"var(--danger)", items:[
+      "Fix Google Cloud Platform billing — console.cloud.google.com — update payment method",
+      "Check PayPal Credit Card total balance — if 25%+ APR, pay off or transfer",
+      "Sign up for Plaid at dashboard.plaid.com (free) — give keys to Skippy",
+    ]},
+    { phase:"THIS WEEK", color:"var(--warn)", items:[
+      "Go to Costco T-Mobile kiosk with the cheat sheet — save $75+/mo",
+      "Open Mercury business checking — fund with $2,000-3,000",
+      "Apply for Amex Blue Business Plus (no annual fee, 2x MR)",
+      "Order Omi wearable ($89) — charge to business card",
+      "Connect Chase + Amex to this dashboard via Plaid",
+    ]},
+    { phase:"THIS MONTH", color:"var(--accent)", items:[
+      "Review Amazon Prime before Apr 10 price change",
+      "Evaluate Google AI Pro ($19.99/mo) vs Claude API — need both?",
+      "Audit Audible, GoPro, PlayStation — cut if unused",
+      "Sell iPhone 14 Pro Max on Swappa ($440-620)",
+      "Set up Twilio daily financial text to Scott & Ali",
+    ]},
+    { phase:"ONGOING", color:"var(--blue)", items:[
+      "Daily 7am text with financial snapshot",
+      "Subscription renewal alerts 3 days before charge",
+      "Anomaly detection — flag charges over $100",
+      "Monthly budget review — first Sunday each month",
+      "Quarterly subscription audit",
+    ]},
+  ];
+
+  let html = '';
+  phases.forEach(p => {
+    html += `<div class="phase">
+      <div class="phase-title">
+        <div class="phase-dot" style="background:${p.color}"></div>
+        <div class="phase-label" style="color:${p.color}">${p.phase}</div>
+      </div>`;
+    p.items.forEach(item => {
+      html += `<div class="phase-item" style="border-left-color:${p.color}22">${item}</div>`;
+    });
+    html += '</div>';
+  });
+
+  // Savings summary
+  html += `<div class="card" style="background:linear-gradient(135deg,var(--accent-dim),var(--blue-dim));border-color:rgba(0,212,170,0.2)">
+    <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:12px">PROJECTED MONTHLY SAVINGS</div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:4px 16px;font-size:12px">
+      <span style="color:var(--dim)">Verizon → T-Mobile</span><span style="color:var(--accent);font-family:var(--mono);text-align:right">+$75/mo</span>
+      <span style="color:var(--dim)">Cancel Call Filter</span><span style="color:var(--accent);font-family:var(--mono);text-align:right">+$4/mo</span>
+      <span style="color:var(--dim)">Drop Google AI Pro (if redundant)</span><span style="color:var(--accent);font-family:var(--mono);text-align:right">+$20/mo</span>
+      <span style="color:var(--dim)">Audit entertainment subs</span><span style="color:var(--accent);font-family:var(--mono);text-align:right">+$15-40/mo</span>
+      <span style="color:var(--text);font-weight:700;border-top:1px solid var(--border);padding-top:8px;margin-top:4px">TOTAL POTENTIAL</span>
+      <span style="color:var(--accent);font-family:var(--mono);font-weight:700;font-size:16px;text-align:right;border-top:1px solid var(--border);padding-top:8px;margin-top:4px">$115-139/mo</span>
+    </div>
+    <p style="font-size:11px;color:var(--dim);margin-top:8px">$1,380-$1,668/year. Enough to fund Claude API, Omi, and Intersect for a full year.</p>
+  </div>`;
+
+  document.getElementById('plan-content').innerHTML = html;
+}
+</script>
+</body>
+</html>
