@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jack — Wicko Waypoint</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#0a0a0a;--fg:#f0ede8;--accent:#ff4d35;--accent2:#00d4aa;--muted:rgba(240,237,232,.35);
+--mono:'Space Mono',monospace;--sans:'Outfit',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::selection{background:var(--accent);color:var(--bg)}
+
+/* GRAIN OVERLAY */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.5}
+
+.container{max-width:1100px;margin:0 auto;padding:0 24px}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;position:relative;padding:120px 0 80px}
+.hero-tag{font-family:var(--mono);font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:24px;opacity:0;animation:fadeUp .8s ease .3s forwards}
+.hero h1{font-size:clamp(48px,8vw,96px);font-weight:900;line-height:.95;letter-spacing:-3px;margin-bottom:32px;opacity:0;animation:fadeUp .8s ease .5s forwards}
+.hero h1 em{font-style:italic;color:var(--accent);display:inline}
+.hero-sub{font-size:clamp(16px,2.2vw,22px);font-weight:300;line-height:1.7;color:var(--muted);max-width:600px;opacity:0;animation:fadeUp .8s ease .7s forwards}
+.hero-sub strong{color:var(--fg);font-weight:500}
+.hero-glow{position:absolute;top:20%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(255,77,53,.08) 0%,transparent 70%);pointer-events:none}
+.hero-glow2{position:absolute;bottom:10%;left:-15%;width:400px;height:400px;background:radial-gradient(circle,rgba(0,212,170,.06) 0%,transparent 70%);pointer-events:none}
+
+/* SECTION */
+.section{padding:120px 0}
+.section-tag{font-family:var(--mono);font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent2);margin-bottom:16px}
+.section h2{font-size:clamp(32px,5vw,56px);font-weight:800;line-height:1.05;letter-spacing:-2px;margin-bottom:24px}
+.section h2 em{color:var(--accent);font-style:normal}
+.section-desc{font-size:18px;font-weight:300;line-height:1.8;color:var(--muted);max-width:640px;margin-bottom:48px}
+
+/* PROJECT CARDS */
+.projects{display:grid;grid-template-columns:repeat(2,1fr);gap:2px}
+.project{position:relative;padding:48px 40px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);transition:all .4s;overflow:hidden}
+.project:hover{background:rgba(255,255,255,.05)}
+.project::before{content:'';position:absolute;top:0;left:0;width:3px;height:0;background:var(--accent);transition:height .4s}
+.project:hover::before{height:100%}
+.project-type{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);margin-bottom:12px}
+.project h3{font-size:24px;font-weight:700;margin-bottom:8px;letter-spacing:-.5px}
+.project-client{font-size:13px;color:var(--muted);margin-bottom:16px}
+.project p{font-size:14px;line-height:1.8;color:rgba(240,237,232,.5);font-weight:300}
+.project-stat{display:inline-block;font-family:var(--mono);font-size:11px;color:var(--accent);background:rgba(255,77,53,.1);padding:4px 10px;border-radius:4px;margin-top:16px}
+
+/* WHAT WE BUILD */
+.capabilities{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-top:48px}
+.cap{padding:32px;border:1px solid rgba(255,255,255,.06);border-radius:12px;transition:all .3s}
+.cap:hover{border-color:rgba(255,77,53,.3);transform:translateY(-4px)}
+.cap-icon{font-size:28px;margin-bottom:16px}
+.cap h4{font-size:16px;font-weight:700;margin-bottom:8px}
+.cap p{font-size:13px;line-height:1.7;color:var(--muted);font-weight:300}
+
+/* VISION */
+.vision-grid{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+.vision-text p{font-size:16px;line-height:2;color:rgba(240,237,232,.5);font-weight:300;margin-bottom:24px}
+.vision-text p strong{color:var(--fg);font-weight:600}
+.vision-stats{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.v-stat{padding:28px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);border-radius:12px}
+.v-stat-num{font-size:36px;font-weight:800;color:var(--accent);letter-spacing:-1px}
+.v-stat-label{font-size:12px;color:var(--muted);margin-top:4px;letter-spacing:.5px}
+
+/* CTA */
+.cta-section{padding:120px 0;text-align:center}
+.cta-section h2{font-size:clamp(36px,6vw,64px);font-weight:900;letter-spacing:-2px;margin-bottom:24px}
+.cta-section p{font-size:18px;color:var(--muted);font-weight:300;max-width:500px;margin:0 auto 48px;line-height:1.8}
+.cta-btn{display:inline-block;font-family:var(--sans);font-size:16px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--bg);background:var(--accent);padding:20px 48px;border-radius:100px;text-decoration:none;transition:all .3s;box-shadow:0 8px 32px rgba(255,77,53,.3)}
+.cta-btn:hover{transform:translateY(-3px);box-shadow:0 16px 48px rgba(255,77,53,.4)}
+
+/* FOOTER */
+.footer{padding:48px 0;text-align:center;font-size:12px;color:rgba(240,237,232,.2);letter-spacing:1px}
+
+/* DIVIDER */
+.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);margin:0 auto;max-width:800px}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+.reveal{opacity:0;transform:translateY(40px);transition:all .8s cubic-bezier(.16,1,.3,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+.projects{grid-template-columns:1fr}
+.capabilities{grid-template-columns:1fr}
+.vision-grid{grid-template-columns:1fr;gap:40px}
+.project{padding:32px 24px}
+.section{padding:80px 0}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+<div class="hero-glow"></div>
+<div class="hero-glow2"></div>
+<div class="container">
+<div class="hero-tag">This page is just for you</div>
+<h1>Hey Jack.<br>We should <em>talk.</em></h1>
+<p class="hero-sub">I'm building something. Not a side project. Not a hobby. A real company that uses AI to help <strong>small businesses run like they have a team of fifty</strong>. And I think your brain belongs in this.</p>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<section class="section">
+<div class="container">
+<div class="section-tag">What we're building</div>
+<h2>Wicko Waypoint is an <em>AI agency</em> that actually builds things.</h2>
+<p class="section-desc">Not decks. Not strategies. Not "consulting." We build websites, dashboards, automation pipelines, and AI systems that run businesses. Real infrastructure. Deployed. Working. Making money.</p>
+
+<div class="projects">
+
+<div class="project reveal">
+<div class="project-type">Restaurant</div>
+<h3>Hires Big H</h3>
+<div class="project-client">Utah's original drive-in since 1959 &bull; 3 locations</div>
+<p>Full website rebuild, live hours engine, flip-card recipe shop, applicant tracking system with hiring pipeline, catering forms, review aggregation, 13-module management dashboard. Replaced a $14K agency's work in a weekend.</p>
+<span class="project-stat">Live &rarr; hiresbigh.com</span>
+</div>
+
+<div class="project reveal">
+<div class="project-type">Political Campaign</div>
+<h3>Kara Toone for Utah House</h3>
+<div class="project-client">District 14 Republican Primary &bull; June 2026</div>
+<p>Campaign website, client portal, NocoDB CRM, content pipeline, media hosting on Cloudflare R2. First paying client. $1,000 + $500/month through the primary.</p>
+<span class="project-stat">Signed Revenue &rarr; $2,500 contractrarr; kara.wickowaypoint.com · Launching this week</span>
+</div>
+
+<div class="project reveal">
+<div class="project-type">Insurance / Crisis</div>
+<h3>Aaron Sessions Fire Recovery</h3>
+<div class="project-client">Home destroyed in fire &bull; Insurance claim portal</div>
+<p>Built a portal to organize 1,560 line items, 4,743 pieces of property. Automated categorization, room-by-room breakdown, StateFarm upload format. ~$109K documented replacement value.</p>
+<span class="project-stat">Deployed &rarr; aaron.wickowaypoint.com</span>
+</div>
+
+<div class="project reveal">
+<div class="project-type">Professional Services</div>
+<h3>Appraiser AI Kit</h3>
+<div class="project-client">Idaho &amp; Oregon residential appraiser</div>
+<p>Claude project system prompt + prompt templates for market conditions narratives, comp justification, adjustment support, VA compliance checks. Productized AI for a specific profession.</p>
+<span class="project-stat">Template &rarr; Replicable to any trade</span>
+</div>
+
+</div>
+</div>
+</section>
+
+<div class="divider"></div>
+
+<section class="section">
+<div class="container">
+<div class="section-tag">The stack</div>
+<h2>What we <em>actually</em> build with</h2>
+<p class="section-desc">No WordPress. No Wix. No Squarespace. We build on infrastructure we control end-to-end.</p>
+
+<div class="capabilities">
+
+<div class="cap reveal">
+<div class="cap-icon">&#9889;</div>
+<h4>Cloudflare Everything</h4>
+<p>Pages, Workers, R2 storage, D1 databases, KV, Tunnels. Serverless. Global CDN. Pennies per million requests.</p>
+</div>
+
+<div class="cap reveal">
+<div class="cap-icon">&#129302;</div>
+<h4>AI-Native Systems</h4>
+<p>Claude API for categorization, sentiment analysis, content generation. Not chatbots. Invisible AI that makes things work better.</p>
+</div>
+
+<div class="cap reveal">
+<div class="cap-icon">&#128241;</div>
+<h4>Ambient Capture</h4>
+<p>Omi wearable &rarr; Cloudflare Worker &rarr; Claude Haiku &rarr; summaries, action items, CRM entries. Conversations become data automatically.</p>
+</div>
+
+<div class="cap reveal">
+<div class="cap-icon">&#128290;</div>
+<h4>Voice + SMS</h4>
+<p>Twilio for restaurant phone systems, appointment confirmations, daily financial alerts. Real communication, automated.</p>
+</div>
+
+<div class="cap reveal">
+<div class="cap-icon">&#128200;</div>
+<h4>Dashboards That Work</h4>
+<p>Not Tableau. Not PowerBI. Custom dashboards built into the product. Feedback, reviews, CRM, hiring, wholesale — all in one place.</p>
+</div>
+
+<div class="cap reveal">
+<div class="cap-icon">&#127760;</div>
+<h4>Open Source First</h4>
+<p>Chatterbox for TTS. NocoDB for CRM. Self-hosted when possible. The goal is owning the stack, not renting it.</p>
+</div>
+
+</div>
+</div>
+</section>
+
+<div class="divider"></div>
+
+<section class="section">
+<div class="container">
+<div class="section-tag">The vision</div>
+<h2>Where this <em>goes</em></h2>
+
+<div class="vision-grid">
+<div class="vision-text">
+<p>Right now Wicko Waypoint builds for clients. Websites, dashboards, AI systems. That's the revenue engine. But the real play is <strong>Intersect Kit</strong> — an open-source personal AI operating system that anyone can run.</p>
+<p>Imagine a restaurant owner who has a phone system that answers calls with AI, a dashboard that shows reviews from every platform in one place, a hiring pipeline that's fair and documented, and financial alerts texted to them every morning. <strong>That's not five products. That's one system.</strong></p>
+<p>We prove each module with a real client. Then we package it. Then we sell it. The restaurant phone system alone is a $122/month SaaS product. Multiply by every small business that can't afford a CTO.</p>
+<p><strong>That's the market.</strong></p>
+</div>
+<div class="vision-stats">
+<div class="v-stat reveal"><div class="v-stat-num">4</div><div class="v-stat-label">Active client projects</div></div>
+<div class="v-stat reveal"><div class="v-stat-num">13+</div><div class="v-stat-label">Dashboard modules built</div></div>
+<div class="v-stat reveal"><div class="v-stat-num">$0</div><div class="v-stat-label">Raised from investors</div></div>
+<div class="v-stat reveal"><div class="v-stat-num">100%</div><div class="v-stat-label">Bootstrapped & building</div></div>
+</div>
+</div>
+</div>
+</section>
+
+<div class="divider"></div>
+
+<section class="section">
+<div class="container">
+<div class="section-tag">Why you</div>
+<h2>I don't need an <em>employee.</em><br>I need a co-conspirator.</h2>
+<p class="section-desc" style="max-width:700px;">You're running marketing for Grant Motors. You're building AI story tools. You've got the same Foster brain that sees connections other people miss — the ADHD superpower that makes you infuriating to work with and impossible to replace.</p>
+<p class="section-desc" style="max-width:700px;">I'm not pitching you a job. I'm showing you what I'm building and asking if you see what I see. Because if you do, we should be building it together.</p>
+<p class="section-desc" style="max-width:700px;">I need someone who moves fast, breaks things on purpose, thinks in systems, and isn't afraid of the fact that we're figuring this out as we go. I need someone who gets that AI isn't the product — it's the material. The product is the thing it enables for the person who can't build it themselves.</p>
+<p class="section-desc" style="max-width:700px;color:var(--fg);font-weight:400;">I think that's you. Let's find out.</p>
+</div>
+</section>
+
+<div class="divider"></div>
+
+<section class="cta-section">
+<div class="container">
+<h2>Let's talk.</h2>
+<p>Not a pitch meeting. Not a formal anything. Just a conversation about what's possible when two people with the same last name and the same kind of brain decide to build something real.</p>
+<a href="sms:+18018106642&body=Hey%20Scott%2C%20I%20saw%20the%20page.%20Let%27s%20talk." class="cta-btn">Text Me &rarr;</a>
+</div>
+</section>
+
+<div class="footer">
+<div class="container">Wicko Waypoint &bull; Built with Claude &bull; 2026</div>
+</div>
+
+<script>
+var observer = new IntersectionObserver(function(entries){
+entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible')})
+},{threshold:.1,rootMargin:'0px 0px -60px 0px'});
+document.querySelectorAll('.reveal').forEach(function(el){observer.observe(el)});
+</script>
+</body>
+</html>
