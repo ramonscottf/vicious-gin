@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Skippy">
+<meta name="theme-color" content="#0a0a0a">
+<title>Skippy Command</title>
+<link rel="apple-touch-icon" href="/icon-192.svg">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+    background: #0a0a0a; color: #e0e0e0;
+    min-height: 100vh; min-height: 100dvh;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    overflow-x: hidden;
+  }
+  .header {
+    padding: 12px 20px 10px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid #1a1a1a;
+    position: sticky; top: 0; background: #0a0a0a; z-index: 10;
+  }
+  .header-label { font-size: 9px; letter-spacing: 3px; color: #e94560; text-transform: uppercase; }
+  .header-title { font-size: 20px; font-weight: 700; color: #fff; }
+  .status-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px;
+    animation: pulse 2s infinite;
+  }
+  .status-dot.on { background: #22c55e; }
+  .status-dot.off { background: #ef4444; animation: none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @keyframes slideUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  .stats {
+    display: flex; gap: 1px; padding: 10px 20px; background: #0f0f0f;
+  }
+  .stat { flex: 1; text-align: center; padding: 6px 0; }
+  .stat-val { font-size: 18px; font-weight: 700; color: #fff; }
+  .stat-label { font-size: 10px; color: #666; margin-top: 2px; }
+
+  .tabs {
+    display: flex; border-bottom: 1px solid #1a1a1a; padding: 0 20px;
+    position: sticky; top: 52px; background: #0a0a0a; z-index: 10;
+  }
+  .tab {
+    flex: 1; padding: 12px 0; background: none; border: none;
+    border-bottom: 2px solid transparent; color: #666;
+    font-size: 13px; font-weight: 400; cursor: pointer; transition: all .2s;
+  }
+  .tab.active { border-bottom-color: #e94560; color: #fff; font-weight: 600; }
+
+  .content { padding: 12px 20px 80px; }
+
+  .card {
+    background: #111; border-radius: 12px; padding: 14px; margin-bottom: 8px;
+    border: 1px solid #1a1a1a; animation: slideUp .3s ease both;
+  }
+  .card-title { font-size: 15px; font-weight: 600; color: #fff; line-height: 1.3; margin-bottom: 4px; }
+  .card-summary { font-size: 13px; color: #999; line-height: 1.5; margin-bottom: 8px; }
+  .badge {
+    display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: .08em; font-weight: 600; margin-right: 6px;
+  }
+  .badge-work { background: #1e3a5f; color: #85b7eb; }
+  .badge-family { background: #3d2d1e; color: #f0997b; }
+  .badge-finance { background: #1e3d2d; color: #5dcaa5; }
+  .badge-hires { background: #3d1e3d; color: #d4a5d4; }
+  .badge-social { background: #2d3d1e; color: #b5d47a; }
+  .badge-health { background: #3d1e1e; color: #f09595; }
+  .badge-skippy { background: #1e2a3d; color: #a5c4f0; }
+  .badge-high { background: #3d1e1e; color: #f09595; }
+
+  .action-item {
+    font-size: 12px; color: #e94560; padding: 4px 0 4px 12px;
+    border-left: 2px solid #e94560; margin-top: 4px;
+  }
+  .time-ago { font-size: 11px; color: #555; }
+
+  .task-row {
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .task-circle {
+    width: 22px; height: 22px; border-radius: 50%; border: 2px solid #333;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .task-from { font-size: 11px; color: #555; }
+
+  .sys-row {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .sys-name { font-size: 15px; font-weight: 600; color: #fff; }
+  .sys-detail { font-size: 12px; color: #666; margin-top: 4px; margin-left: 16px; }
+  .sys-status { font-size: 11px; font-weight: 600; }
+  .sys-status.on { color: #22c55e; }
+  .sys-status.off { color: #ef4444; }
+
+  .cost-card {
+    background: #111; border-radius: 12px; padding: 16px; margin-top: 16px;
+    border: 1px solid #1a1a1a; text-align: center;
+  }
+  .cost-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; }
+  .cost-val { font-size: 28px; font-weight: 700; color: #22c55e; }
+  .cost-detail { font-size: 11px; color: #555; margin-top: 4px; }
+
+  .footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 12px 20px; background: linear-gradient(transparent, #0a0a0a 40%);
+    text-align: center; pointer-events: none;
+  }
+  .footer-text { font-size: 10px; color: #333; letter-spacing: 1px; }
+
+  .empty { text-align: center; padding: 40px; color: #444; font-style: italic; }
+  .loading { text-align: center; padding: 60px; color: #444; }
+  .refresh-btn {
+    display: block; margin: 20px auto; padding: 8px 20px; background: #1a1a1a;
+    border: 1px solid #333; border-radius: 8px; color: #999; font-size: 12px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-label">Project Skippy</div>
+    <div class="header-title">Command</div>
+  </div>
+  <div style="text-align:right">
+    <div id="status-indicator"></div>
+    <div id="last-refresh" class="time-ago"></div>
+  </div>
+</div>
+
+<div class="stats" id="stats-bar"></div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="feed">Feed</button>
+  <button class="tab" data-tab="actions">Tasks</button>
+  <button class="tab" data-tab="systems">Systems</button>
+</div>
+
+<div class="content" id="content">
+  <div class="loading">Connecting to Skippy...</div>
+</div>
+
+<div class="footer">
+  <div class="footer-text">SKIPPY COMMAND v1 — April 2, 2026</div>
+</div>
+
+<script>
+const ENDPOINTS = {
+  context: 'https://omi.fosterlabs.org/context',
+  health: 'https://omi.fosterlabs.org/health',
+  finance: 'https://fosterlabs.org/api/plaid/status'
+};
+
+let state = { tab: 'feed', context: null, health: null, finance: null, lastRefresh: null };
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hrs = Math.floor(diff / 3600000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  return hrs + 'h ago';
+}
+
+function badgeClass(cat) {
+  const map = { work:'badge-work', family:'badge-family', finance:'badge-finance',
+    hires:'badge-hires', social:'badge-social', health:'badge-health', skippy:'badge-skippy' };
+  return map[cat] || 'badge-work';
+}
+
+async function fetchAll() {
+  try {
+    const [ctx, hlth, fin] = await Promise.allSettled([
+      fetch(ENDPOINTS.context).then(r => r.json()),
+      fetch(ENDPOINTS.health).then(r => r.json()),
+      fetch(ENDPOINTS.finance).then(r => r.json())
+    ]);
+    if (ctx.status === 'fulfilled') state.context = ctx.value;
+    if (hlth.status === 'fulfilled') state.health = hlth.value;
+    if (fin.status === 'fulfilled') state.finance = fin.value;
+    state.lastRefresh = new Date();
+  } catch(e) { console.error(e); }
+  render();
+}
+
+function renderStats() {
+  const memories = state.context?.memories_count || '—';
+  const actions = state.context?.pending_actions?.length || '—';
+  const chase = state.finance?.plaid_configured ? 'Connected' : '—';
+  const omi = state.health?.status === 'ok' ? 'Live' : '—';
+  document.getElementById('stats-bar').innerHTML = [
+    { l: 'Memories', v: memories }, { l: 'Actions', v: actions },
+    { l: 'Chase', v: chase }, { l: 'Omi', v: omi }
+  ].map(s => `<div class="stat"><div class="stat-val">${s.v}</div><div class="stat-label">${s.l}</div></div>`).join('');
+}
+
+function renderStatus() {
+  const ok = state.health?.status === 'ok';
+  document.getElementById('status-indicator').innerHTML =
+    `<span class="status-dot ${ok?'on':'off'}"></span><span style="font-size:11px;color:${ok?'#22c55e':'#ef4444'}">${ok?'Online':'Offline'}</span>`;
+  if (state.lastRefresh) {
+    document.getElementById('last-refresh').textContent = timeAgo(state.lastRefresh.toISOString());
+  }
+}
+
+function renderFeed() {
+  const memories = state.context?.recent_memories || [];
+  if (!memories.length) return '<div class="empty">No memories yet. Start talking.</div>';
+  return memories.map((m, i) => {
+    let actions = '';
+    if (m.action_items?.length) {
+      actions = m.action_items.map(a => `<div class="action-item">${a}</div>`).join('');
+    }
+    let people = m.people?.length ? `<span class="time-ago">${m.people.join(', ')}</span>` : '';
+    return `<div class="card" style="animation-delay:${i*0.04}s">
+      <div class="card-title">${m.title || 'Untitled'}</div>
+      ${m.summary ? `<div class="card-summary">${m.summary}</div>` : ''}
+      <div>
+        ${m.category ? `<span class="badge ${badgeClass(m.category)}">${m.category}</span>` : ''}
+        ${m.priority && m.priority !== 'medium' ? `<span class="badge badge-high">${m.priority}</span>` : ''}
+        <span class="time-ago">${timeAgo(m.ts)}</span>
+        ${people}
+      </div>
+      ${actions}
+    </div>`;
+  }).join('');
+}
+
+function renderActions() {
+  const actions = state.context?.pending_actions || [];
+  if (!actions.length) return '<div class="empty">No pending actions. Voice creates tasks automatically.</div>';
+  return actions.map((a, i) => `<div class="card task-row" style="animation-delay:${i*0.04}s">
+    <div class="task-circle"></div>
+    <div style="flex:1">
+      <div style="font-size:14px;color:#e0e0e0;line-height:1.4">${a.text}</div>
+      <div style="margin-top:6px">
+        ${a.category ? `<span class="badge ${badgeClass(a.category)}">${a.category}</span>` : ''}
+        <span class="task-from">from: ${a.from || '?'}</span>
+        <span class="time-ago" style="margin-left:6px">${timeAgo(a.ts)}</span>
+      </div>
+    </div>
+  </div>`).join('');
+}
+
+function renderSystems() {
+  const ok = state.health?.status === 'ok';
+  const plaidOk = state.finance?.plaid_configured;
+  const systems = [
+    { name: 'Omi Pipeline', ok, detail: `${state.context?.memories_count||0} memories captured`, icon: '📡' },
+    { name: 'Plaid / Chase', ok: plaidOk, detail: `${state.finance?.connected_institutions?.length||0} institution(s)`, icon: '🏦' },
+    { name: 'Context Engine', ok: true, detail: 'Runs 6am, 10am, 2pm, 6pm, 10pm', icon: '⚙️' },
+    { name: 'OpenClaw', ok: true, detail: 'Telegram + iMessage', icon: '💬' },
+    { name: 'Skippy Live', ok, detail: 'Real-time transcript', icon: '⚡' }
+  ];
+  let html = systems.map((s, i) => `<div class="card sys-row" style="animation-delay:${i*0.04}s">
+    <div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">${s.icon}</span>
+        <span class="sys-name">${s.name}</span>
+      </div>
+      <div class="sys-detail">${s.detail}</div>
+    </div>
+    <div class="sys-status ${s.ok?'on':'off'}">${s.ok?'Online':'Offline'}</div>
+  </div>`).join('');
+
+  html += `<div class="cost-card">
+    <div class="cost-label">Infrastructure cost</div>
+    <div class="cost-val">~$8/mo</div>
+    <div class="cost-detail">Cloudflare $5 + Haiku ~$3 + Plaid $0</div>
+  </div>`;
+  return html;
+}
+
+function render() {
+  renderStats();
+  renderStatus();
+  const el = document.getElementById('content');
+  if (!state.context && !state.health) {
+    el.innerHTML = '<div class="loading">Connecting to Skippy...</div>';
+    return;
+  }
+  if (state.tab === 'feed') el.innerHTML = renderFeed();
+  else if (state.tab === 'actions') el.innerHTML = renderActions();
+  else el.innerHTML = renderSystems();
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    state.tab = t.dataset.tab;
+    render();
+  });
+});
+
+// Pull to refresh
+let touchStart = 0;
+document.addEventListener('touchstart', e => { touchStart = e.touches[0].clientY; });
+document.addEventListener('touchend', e => {
+  if (window.scrollY === 0 && e.changedTouches[0].clientY - touchStart > 80) fetchAll();
+});
+
+fetchAll();
+setInterval(fetchAll, 30000);
+</script>
+</body>
+</html>
